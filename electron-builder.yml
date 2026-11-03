@@ -1,0 +1,72 @@
+appId: com.openbrowser.agent
+productName: Open Browser
+executableName: open-browser
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - "src/**/*"
+  - "skills/**/*"
+  - "scripts/**/*"
+  - "!scripts/smoke.mjs"
+  - "package.json"
+
+# Linux configuration (AppImage)
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  category: Development;WebBrowser;
+  icon: build/icons
+  syncDesktopName: true
+  synopsis: Navegador web exclusivo para agentes de IA
+  description: Entorno de navegador Chromium dedicado para que agentes de IA inspeccionen, prueben y verifiquen aplicaciones web visualmente y mediante API local.
+
+appImage:
+  artifactName: "${productName}-${version}-${arch}.${ext}"
+
+# Windows configuration (Portable single-file .exe)
+win:
+  target:
+    - target: portable
+      arch:
+        - x64
+  icon: build/icon.ico
+
+portable:
+  artifactName: "${productName}-${version}-portable-${arch}.${ext}"
+
+# macOS configuration (.dmg and .zip for Intel & Apple Silicon)
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+    - target: zip
+      arch:
+        - x64
+        - arm64
+  icon: build/icon.icns
+  category: public.app-category.developer-tools
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+
+dmg:
+  title: "${productName} ${version}"
+  contents:
+    - x: 130
+      y: 190
+      type: file
+    - x: 410
+      y: 190
+      type: link
+      path: /Applications
+  window:
+    width: 540
+    height: 380

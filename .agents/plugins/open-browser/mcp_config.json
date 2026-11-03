@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "open-browser": {
+      "command": "node",
+      "args": [
+        "/home/johan/projects/agent-browser/scripts/mcp-server.mjs"
+      ],
+      "env": {
+        "PATH": "/home/johan/.local/share/nvm/v24.22.1/bin:/home/johan/.local/bin:/usr/local/bin:/usr/bin:/bin"
+      }
+    }
+  }
+}

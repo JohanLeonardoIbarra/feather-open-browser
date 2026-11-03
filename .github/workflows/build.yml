@@ -1,0 +1,55 @@
+name: Build Multiplatform Distributables
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }} (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: AppImage (Linux)
+            command: npm run dist:linux
+          - os: ubuntu-latest
+            target: Portable .exe (Windows)
+            command: npm run dist:win
+          - os: macos-latest
+            target: DMG & ZIP (macOS x64 & arm64)
+            command: npm run dist:mac
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests and checks
+        run: npm run check && npm test
+
+      - name: Build target
+        run: ${{ matrix.command }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: open-browser-${{ matrix.os }}-${{ strategy.job-index }}
+          path: |
+            dist/*.AppImage
+            dist/*.exe
+            dist/*.dmg
+            dist/*.zip
