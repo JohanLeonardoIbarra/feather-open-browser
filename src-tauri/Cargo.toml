@@ -1,6 +1,6 @@
 [package]
 name = "feather-open-browser"
-version = "0.1.0"
+version = "0.0.2"
 description = "A dedicated local browser for AI agents"
 authors = ["Feather Open Browser Team"]
 edition = "2021"
