@@ -622,7 +622,7 @@ impl SpaceManager {
     let actions_list = actions.as_array().cloned().unwrap_or_default();
     let wv = app_handle.get_webview(&label).ok_or("Webview de la pestaña no disponible")?;
 
-    let mut final_result = Ok(serde_json::json!({ "ok": true }));
+    let mut results = Vec::new();
 
     for action in actions_list {
       let action_type = action.get("type").and_then(|v| v.as_str()).unwrap_or("");
@@ -643,14 +643,14 @@ impl SpaceManager {
             r
           );
           if let Err(e) = eval_js_async(&wv, &script).await {
-            final_result = Err(e);
-            break;
+            return Err(e);
           }
+          results.push(serde_json::json!({ "ok": true }));
         }
 
         "fill" => {
           let r = action.get("ref").and_then(|v| v.as_str()).unwrap_or("");
-          let text = action.get("text").and_then(|v| v.as_str()).unwrap_or("");
+          let text = action.get("value").or_else(|| action.get("text")).and_then(|v| v.as_str()).unwrap_or("");
           let script = format!(
             r#"
               JSON.stringify((function() {{
@@ -667,9 +667,9 @@ impl SpaceManager {
             r, text
           );
           if let Err(e) = eval_js_async(&wv, &script).await {
-            final_result = Err(e);
-            break;
+            return Err(e);
           }
+          results.push(serde_json::json!({ "ok": true }));
         }
 
         "press" => {
@@ -686,9 +686,9 @@ impl SpaceManager {
             key, key
           );
           if let Err(e) = eval_js_async(&wv, &script).await {
-            final_result = Err(e);
-            break;
+            return Err(e);
           }
+          results.push(serde_json::json!({ "ok": true }));
         }
 
         "hover" => {
@@ -705,9 +705,9 @@ impl SpaceManager {
             r
           );
           if let Err(e) = eval_js_async(&wv, &script).await {
-            final_result = Err(e);
-            break;
+            return Err(e);
           }
+          results.push(serde_json::json!({ "ok": true }));
         }
 
         "scroll" => {
@@ -723,14 +723,40 @@ impl SpaceManager {
             dy, dx
           );
           if let Err(e) = eval_js_async(&wv, &script).await {
-            final_result = Err(e);
-            break;
+            return Err(e);
+          }
+          results.push(serde_json::json!({ "ok": true }));
+        }
+
+        "navigate" => {
+          if let Some(target) = action.get("url").and_then(|v| v.as_str()) {
+            let _ = Self::navigate(manager_arc, space_id, tab_id, target).await;
+            results.push(serde_json::json!({ "navigated": target }));
           }
         }
 
+        "back" => {
+          let _ = Self::go_back(manager_arc, space_id, tab_id).await;
+          results.push(serde_json::json!({ "ok": true }));
+        }
+
+        "forward" => {
+          let _ = Self::go_forward(manager_arc, space_id, tab_id).await;
+          results.push(serde_json::json!({ "ok": true }));
+        }
+
+        "reload" => {
+          let _ = Self::reload(manager_arc, space_id, tab_id).await;
+          results.push(serde_json::json!({ "ok": true }));
+        }
+
         "wait" => {
-          let ms = action.get("durationMs").and_then(|v| v.as_u64()).unwrap_or(100);
+          let ms = action.get("ms")
+            .or_else(|| action.get("durationMs"))
+            .and_then(|v| v.as_u64())
+            .unwrap_or(100);
           tokio::time::sleep(tokio::time::Duration::from_millis(ms)).await;
+          results.push(serde_json::json!({ "waited": ms }));
         }
 
         _ => {}
@@ -747,7 +773,14 @@ impl SpaceManager {
       mgr.emit_state();
     }
 
-    final_result
+    let snapshot = Self::snapshot(manager_arc, space_id, tab_id)
+      .await
+      .unwrap_or_else(|_| serde_json::json!({}));
+
+    Ok(serde_json::json!({
+      "results": results,
+      "snapshot": snapshot,
+    }))
   }
 
   pub async fn get_html(

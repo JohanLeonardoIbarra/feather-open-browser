@@ -3,65 +3,86 @@ name: open-browser
 description: Control the local Open Browser app using its authenticated localhost API. Dedicated agent-exclusive browser environment for inspecting, developing, and debugging web applications.
 ---
 
-# Open Browser
+# Open Browser (Speed-Optimized Agent Protocol)
 
-Open Browser is a browser environment dedicated exclusively to AI agents. It starts in standby with 0 spaces and spawns ephemeral Spaces strictly on-demand when an agent requests one. The agent is responsible for closing its space when its task or feedback loop is complete.
+Open Browser is an ultra-lightweight browser environment dedicated exclusively to AI agents. It launches in standby with 0 spaces and spawns ephemeral Spaces strictly on-demand.
 
-## Connect
+---
 
-Prefer the MCP tools:
-- **Lifecycle**: `browser_spaces`, `browser_create_space`, `browser_close_space`, `browser_tabs`, `browser_open_tab`, `browser_close_tab`.
-- **Navigation & Actions**: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_fill`, `browser_press`, `browser_wait`, `browser_back`, `browser_forward`, `browser_reload`, `browser_run_actions`.
-- **Verification & Debugging**: `browser_screenshot`, `browser_get_html`, `browser_network_requests`, `browser_console_logs`.
+## ⚡ High-Speed Execution Rules (Zero-Overthinking)
 
-Project-local MCP configuration is available for OpenCode (`opencode.json`) and Antigravity (`.agents/plugins/open-browser/mcp_config.json`); other MCP clients can run `node scripts/mcp-server.mjs` from the checkout root. Keep the Open Browser app running.
+To ensure maximum speed, low latency, and zero redundant reasoning turns, follow these strict rules:
 
-## Verification Policy
+### 1. One-Shot Space Creation
+- **Always** provide the initial target `url` when creating a space:
+  ```json
+  { "name": "Task Name", "url": "https://example.com" }
+  ```
+- This navigates the tab immediately during creation, eliminating an extra navigation turn.
 
-All verification and assertions in Open Browser must be done exclusively through browser observables:
-- **HTML & DOM Snapshots**: Use `browser_snapshot` for interactive elements and text, or `browser_get_html` for full document or ref outerHTML.
-- **Visual Screenshots**: Use `browser_screenshot` to inspect visual layouts, detect design regressions, or verify elements that are obscured or difficult to access in DOM.
-- **Terminal & Console Logs**: Use `browser_console_logs` to verify client-side errors, warnings, and messages.
-- **Network Requests**: Use `browser_network_requests` to verify API calls, status codes, and network payloads.
-- **Strict Prohibition**: Never validate behavior using terminal commands like `docker` or by connecting directly to databases. Always observe what the user sees in the browser.
+### 2. Action Tools Already Return Fresh Snapshots
+- `browser_click`, `browser_fill`, `browser_press`, `browser_wait`, and `browser_run_actions` **already return the updated page snapshot and valid refs (`e1`, `e2`, ...)** in their response.
+- 🛑 **NEVER call `browser_snapshot` immediately after an action tool.** It wastes an entire reasoning turn and duplicates token context. Read the snapshot directly from the action's result!
 
-## Typical Flow: Inspection & Feedback Loop
+### 3. Batch Predictable Actions with `browser_run_actions`
+- Do not execute form interactions sequentially across separate turns. Combine them into a single `browser_run_actions` call:
+  ```json
+  {
+    "spaceId": "...",
+    "tabId": "...",
+    "actions": [
+      { "type": "fill", "ref": "e2", "value": "search query" },
+      { "type": "press", "key": "Enter" }
+    ]
+  }
+  ```
+- Supported action types: `navigate` (`url`), `click` (`ref`), `fill` (`ref`, `value`), `press` (`key`), `wait` (`ms`), `back`, `forward`, `reload`. Maximum 32 actions per batch.
 
-1. **Spawn Space**: Create a space on demand for the application under test:
-   `browser_create_space({ name: 'Dev Server', url: 'http://localhost:3000' })`
-2. **Scan & Plan**: Request a snapshot (`browser_snapshot`) to inspect available interactive refs (`e1`, `e2`, etc.). Formulate your action plan.
-3. **Execute Visually**: Run actions via `browser_run_actions` (or individual tools). The virtual ghost cursor, click ripple, and element focus render live on screen.
-4. **Observe & Verify**: Use `browser_screenshot`, `browser_console_logs`, `browser_network_requests`, and `browser_get_html` to detect layout bugs, failing requests, or script errors.
-5. **Self-Correct**: If errors or visual regressions are found, adjust the codebase and re-verify.
-6. **Clean Up**: When the task is complete, close the space:
-   `browser_close_space({ spaceId })`. The browser returns to standby.
+### 4. Direct URL Formulation Over UI Searching
+- If the website supports query parameters (e.g., `/search?q=query` or `/search/?name=query`), formulate and navigate to the URL directly with `browser_navigate` instead of clicking search inputs, typing, and submitting.
 
-```js
-import { OpenBrowserClient } from './src/agent-api/client.js';
-const browser = await OpenBrowserClient.connect();
+### 5. Zero Redundant Waits
+- Standard HTTP/HTTPS navigations and page transitions are automatically awaited by the browser.
+- **Do not** insert `browser_wait` or sleep actions unless a page uses heavy client-side JavaScript rendering where required elements have not yet mounted.
 
-// 1. Create on-demand space
-const { space, tab } = await browser.createSpace({
-  name: 'App Verification',
-  url: 'http://localhost:3000'
-});
+### 6. Quick Target Identification
+- To find the "latest chapter", "newest item", or primary action:
+  - Check the top-most link in the list or scan for tags like `"Nuevo"`, `"Latest"`, `"Recent"`, or highest numeric indicators.
+  - Immediately click its ref (`browser_click({ ref: "e..." })`) without over-analyzing irrelevant elements.
 
-// 2. Observe initial state
-const page = await browser.snapshot(space.id, tab.id);
+---
 
-// 3. Interact visually
-await browser.actions(space.id, tab.id, [
-  { type: 'fill', ref: 'e1', value: 'admin' },
-  { type: 'click', ref: 'e2' }
-]);
+## Tool Reference
 
-// 4. Verify observables
-const shot = await browser.screenshot(space.id, tab.id);
-const logs = await browser.consoleLogs(space.id, tab.id);
-const requests = await browser.network(space.id, tab.id);
+### Lifecycle
+- `browser_create_space`: Spawn an isolated Space. Always pass `{ name, url }`.
+- `browser_close_space`: Close space and clean up browsing data when the goal is achieved.
+- `browser_open_tab` / `browser_close_tab`: Manage tabs within an existing space.
 
-// 5. Close space when finished
-await browser.closeSpace(space.id);
+### Interaction (All return updated snapshot!)
+- `browser_run_actions`: **Preferred**. Batch multiple actions (`fill`, `press`, `click`, `wait`, `navigate`) in one call.
+- `browser_click`: Click an element by ref (`e1`, `e2`, ...).
+- `browser_fill`: Set value on text input/textarea.
+- `browser_press`: Send keyboard key (`Enter`, `Tab`, `Escape`, `Backspace`, etc.).
+- `browser_navigate`: Go to an absolute HTTP(S) URL.
+- `browser_wait`: Wait up to 5000ms for delayed client-side DOM rendering.
+
+### Observables & Diagnostics (Use only when necessary)
+- `browser_snapshot`: Read DOM tree and interactive refs (only needed on initial space load if not already provided).
+- `browser_screenshot`: Capture visual PNG screenshot (use when checking layout or visual bugs).
+- `browser_console_logs`: Retrieve client-side console logs and runtime JavaScript errors.
+- `browser_network_requests`: Inspect network requests and response status codes.
+- `browser_get_html`: Fetch full HTML or specific ref outerHTML.
+
+---
+
+## Standard 3-Step Task Pattern
+
 ```
-
-Supported batched actions: `navigate` (`url`), `click` (`ref`), `fill` (`ref`, `value`), `press` (`key`), `wait` (`ms`), `back`, `forward`, and `reload`. Keep batches at 32 actions or fewer. Navigation targets must be valid HTTP/HTTPS URLs (e.g. `http://localhost:3000`, `http://127.0.0.1:8080`, `https://...`); there is no search engine.
+Turn 1: browser_create_space({ name: "Research", url: "https://site.com" })
+        -> Receive initial snapshot with refs.
+Turn 2: browser_run_actions([ { type: "fill", ref: "e1", value: "query" }, { type: "press", key: "Enter" } ])
+        -> Receive search results snapshot with refs.
+Turn 3: browser_click({ ref: "e5" })
+        -> Done! Selected target loaded.
+```
