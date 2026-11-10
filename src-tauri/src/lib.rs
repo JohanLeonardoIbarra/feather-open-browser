@@ -2,6 +2,7 @@ pub mod agent_api;
 pub mod commands;
 pub mod space_manager;
 pub mod state;
+pub mod visual_agent;
 
 use std::sync::Arc;
 use tauri::Manager;
@@ -10,6 +11,13 @@ use space_manager::{SpaceManager, SpaceManagerHandle};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+  #[cfg(target_os = "linux")]
+  {
+    if std::env::var("WEBKIT_DISABLE_DMABUF_RENDERER").is_err() {
+      std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+  }
+
   tauri::Builder::default()
     .plugin(
       tauri_plugin_log::Builder::default()

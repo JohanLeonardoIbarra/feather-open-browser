@@ -114,6 +114,13 @@ function render() {
     standbyView.hidden = hasActiveSpace;
     standbyView.style.display = hasActiveSpace ? 'none' : 'flex';
   }
+  if (hasActiveSpace) {
+    document.documentElement.classList.add('has-active-space');
+    document.body.classList.add('has-active-space');
+  } else {
+    document.documentElement.classList.remove('has-active-space');
+    document.body.classList.remove('has-active-space');
+  }
   if (tabsBar) {
     tabsBar.style.visibility = hasActiveSpace ? 'visible' : 'hidden';
   }

@@ -9,6 +9,13 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; overflow: hidden; background: #0d1117; height: 100vh; }
+html.has-active-space,
+body.has-active-space {
+  height: 76px !important;
+  min-height: 76px !important;
+  max-height: 76px !important;
+  overflow: hidden !important;
+}
 button { font: inherit; color: inherit; }
 button:focus-visible { outline: 2px solid #00f0ff; outline-offset: 2px; }
 button:disabled { cursor: not-allowed; opacity: .4; }

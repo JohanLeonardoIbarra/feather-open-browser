@@ -1,6 +1,6 @@
-# Open Browser
+# Feather Open Browser
 
-Navegador local para Linux con pestañas personales y Spaces separados para agentes. Es una implementación independiente; no contiene ni reutiliza el binario de ego-lite.
+Navegador local ligero y dedicado para agentes de IA y flujos de QA visual para desarrolladores. Implementación nativa ultrarrápida con Tauri v2 y WebKitGTK en Linux.
 
 ## Estado del MVP
 

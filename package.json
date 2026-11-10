@@ -1,10 +1,10 @@
 {
-  "name": "open-browser-spaces",
+  "name": "feather-open-browser",
   "version": "0.1.0",
   "private": true,
-  "description": "A dedicated local Chromium browser for AI agents.",
-  "author": "Open Browser Team",
-  "desktopName": "open-browser.desktop",
+  "description": "A dedicated local browser for AI agents.",
+  "author": "Feather Open Browser Team",
+  "desktopName": "feather-open-browser.desktop",
   "type": "module",
   "main": "src/main.js",
   "scripts": {

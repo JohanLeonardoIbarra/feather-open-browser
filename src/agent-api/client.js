@@ -1,16 +1,42 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, access } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-function defaultConfigPath() {
-  if (process.env.OPEN_BROWSER_CONFIG) return process.env.OPEN_BROWSER_CONFIG;
+function getCandidatePaths() {
+  if (process.env.FEATHER_OPEN_BROWSER_CONFIG) return [process.env.FEATHER_OPEN_BROWSER_CONFIG];
+  if (process.env.OPEN_BROWSER_CONFIG) return [process.env.OPEN_BROWSER_CONFIG];
+
   if (process.platform === 'win32') {
-    return join(process.env.APPDATA || join(homedir(), 'AppData', 'Roaming'), 'open-browser', 'agent-api.json');
+    const base = process.env.APPDATA || join(homedir(), 'AppData', 'Roaming');
+    return [
+      join(base, 'feather-open-browser', 'agent-api.json'),
+      join(base, 'open-browser', 'agent-api.json'),
+    ];
   }
   if (process.platform === 'darwin') {
-    return join(homedir(), 'Library', 'Application Support', 'open-browser', 'agent-api.json');
+    const base = join(homedir(), 'Library', 'Application Support');
+    return [
+      join(base, 'feather-open-browser', 'agent-api.json'),
+      join(base, 'open-browser', 'agent-api.json'),
+    ];
   }
-  return join(process.env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'open-browser', 'agent-api.json');
+  const base = process.env.XDG_CONFIG_HOME || join(homedir(), '.config');
+  return [
+    join(base, 'feather-open-browser', 'agent-api.json'),
+    join(base, 'open-browser', 'agent-api.json'),
+  ];
+}
+
+async function resolveConfigPath(preferredPath) {
+  if (preferredPath) return preferredPath;
+  const candidates = getCandidatePaths();
+  for (const p of candidates) {
+    try {
+      await access(p);
+      return p;
+    } catch {}
+  }
+  return candidates[0];
 }
 
 export class OpenBrowserClient {
@@ -19,12 +45,13 @@ export class OpenBrowserClient {
     this.token = config.token;
   }
 
-  static async connect({ configPath = defaultConfigPath() } = {}) {
+  static async connect({ configPath } = {}) {
+    const resolvedPath = await resolveConfigPath(configPath);
     let config;
     try {
-      config = JSON.parse(await readFile(configPath, 'utf8'));
+      config = JSON.parse(await readFile(resolvedPath, 'utf8'));
     } catch {
-      throw new Error(`No se pudo leer la configuración de Open Browser: ${configPath}. ¿Está abierta la aplicación?`);
+      throw new Error(`No se pudo leer la configuración de Feather Open Browser: ${resolvedPath}. ¿Está abierta la aplicación?`);
     }
     return new OpenBrowserClient(config);
   }
@@ -107,3 +134,5 @@ export class OpenBrowserClient {
     });
   }
 }
+
+export { OpenBrowserClient as FeatherOpenBrowserClient };

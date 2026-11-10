@@ -6,3 +6,5 @@ src-tauri/target/
 *.log
 .idea/
 .impeccable/
+.engram/
+.agents/*.png

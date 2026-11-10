@@ -1,11 +1,11 @@
 ---
-name: open-browser
-description: Control the local Open Browser app using its authenticated localhost API. Dedicated agent-exclusive browser environment for inspecting, developing, and debugging web applications.
+name: feather-open-browser
+description: Control the local Feather Open Browser app using its authenticated localhost API. Dedicated agent-exclusive browser environment for inspecting, developing, and debugging web applications.
 ---
 
-# Open Browser (Speed-Optimized Agent Protocol)
+# Feather Open Browser (Speed-Optimized Agent Protocol)
 
-Open Browser is an ultra-lightweight browser environment dedicated exclusively to AI agents. It launches in standby with 0 spaces and spawns ephemeral Spaces strictly on-demand.
+Feather Open Browser is an ultra-lightweight, dedicated browser environment designed exclusively for AI agents and developer QA. It launches in standby with 0 spaces and spawns ephemeral Spaces strictly on-demand.
 
 ---
 
@@ -49,6 +49,11 @@ To ensure maximum speed, low latency, and zero redundant reasoning turns, follow
 - To find the "latest chapter", "newest item", or primary action:
   - Check the top-most link in the list or scan for tags like `"Nuevo"`, `"Latest"`, `"Recent"`, or highest numeric indicators.
   - Immediately click its ref (`browser_click({ ref: "e..." })`) without over-analyzing irrelevant elements.
+
+### 7. Anti-Loop & Early Stuck Detection (Token-Saver)
+- 🛑 **Strict Retry Limit (Max 1 Retry)**: If an action does not produce the expected state change (e.g., submitting a form via Enter doesn't trigger navigation, a click is absorbed by an overlay/ad, or the URL remains unchanged after 1 attempt), **DO NOT LOOP** repetitive inspect-and-retry cycles (`get_html` -> `fill` -> `press` -> `snapshot` ...).
+- **Ask Promptly Instead of Burning Tokens**: If you get stuck or the interaction is ambiguous, **STOP IMMEDIATELY**. Report the current state concisely to the user, explain what happened (e.g., "The search form did not submit via keyboard event"), propose the direct solution (e.g., navigating directly via query parameter `https://site.com/search/?wd=...`), or ask how they want to proceed.
+- Never burn token budget attempting multiple low-confidence workarounds when a simple user clarification or direct URL navigation solves the problem.
 
 ---
 

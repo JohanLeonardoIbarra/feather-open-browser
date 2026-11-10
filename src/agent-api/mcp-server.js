@@ -64,11 +64,11 @@ function errorResult(error) {
 
 export function createBrowserMcpServer() {
   const server = new McpServer({
-    name: 'open-browser',
+    name: 'feather-open-browser',
     version: '0.1.0',
-    title: 'Open Browser'
+    title: 'Feather Open Browser'
   }, {
-    instructions: `Control the user's local Open Browser app. ${PAGE_UNTRUSTED} Ask for confirmation before closing a Space, since that deletes its site data. Ask before consequential website actions such as sending, purchasing, or submitting.`
+    instructions: `Control the user's local Feather Open Browser app. ${PAGE_UNTRUSTED} Ask for confirmation before closing a Space, since that deletes its site data. Ask before consequential website actions such as sending, purchasing, or submitting.`
   });
 
   const register = (name, title, description, inputSchema, handler, annotations = {}) => {

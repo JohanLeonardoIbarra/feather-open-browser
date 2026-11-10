@@ -15,6 +15,7 @@ pub struct AgentApiServer {
   pub port: u16,
   pub token: String,
   pub config_path: PathBuf,
+  pub legacy_config_path: Option<PathBuf>,
 }
 
 impl AgentApiServer {
@@ -24,7 +25,7 @@ impl AgentApiServer {
     let host = "127.0.0.1".to_string();
     let token = format!("{}{}", Uuid::new_v4().to_string().replace('-', ""), Uuid::new_v4().to_string().replace('-', ""));
 
-    let config_path = determine_config_path();
+    let (config_path, legacy_config_path) = determine_config_paths();
     if let Some(parent) = config_path.parent() {
       let _ = create_dir_all(parent);
     }
@@ -36,10 +37,19 @@ impl AgentApiServer {
       "protocol": "open-browser-agent-api-v1"
     });
 
-    write(&config_path, serde_json::to_string_pretty(&config_content).unwrap())
+    let json_str = serde_json::to_string_pretty(&config_content).unwrap();
+    write(&config_path, &json_str)
       .map_err(|e| format!("Error escribiendo agent-api.json en {:?}: {}", config_path, e))?;
 
     let _ = set_permissions(&config_path, Permissions::from_mode(0o600));
+
+    if let Some(ref legacy) = legacy_config_path {
+      if let Some(parent) = legacy.parent() {
+        let _ = create_dir_all(parent);
+      }
+      let _ = write(legacy, &json_str);
+      let _ = set_permissions(legacy, Permissions::from_mode(0o600));
+    }
 
     let server_arc = Arc::new(server);
     let token_clone = token.clone();
@@ -215,6 +225,7 @@ impl AgentApiServer {
       port,
       token,
       config_path,
+      legacy_config_path,
     })
   }
 
@@ -229,15 +240,24 @@ impl AgentApiServer {
 impl Drop for AgentApiServer {
   fn drop(&mut self) {
     let _ = remove_file(&self.config_path);
+    if let Some(ref legacy) = self.legacy_config_path {
+      let _ = remove_file(legacy);
+    }
   }
 }
 
-fn determine_config_path() -> PathBuf {
+fn determine_config_paths() -> (PathBuf, Option<PathBuf>) {
+  if let Ok(path) = std::env::var("FEATHER_OPEN_BROWSER_CONFIG") {
+    return (PathBuf::from(path), None);
+  }
   if let Ok(path) = std::env::var("OPEN_BROWSER_CONFIG") {
-    return PathBuf::from(path);
+    return (PathBuf::from(path), None);
+  }
+  if let Ok(user_data) = std::env::var("FEATHER_OPEN_BROWSER_USER_DATA") {
+    return (PathBuf::from(user_data).join("agent-api.json"), None);
   }
   if let Ok(user_data) = std::env::var("OPEN_BROWSER_USER_DATA") {
-    return PathBuf::from(user_data).join("agent-api.json");
+    return (PathBuf::from(user_data).join("agent-api.json"), None);
   }
   let base = std::env::var("XDG_CONFIG_HOME")
     .map(PathBuf::from)
@@ -245,7 +265,10 @@ fn determine_config_path() -> PathBuf {
       let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
       PathBuf::from(home).join(".config")
     });
-  base.join("open-browser").join("agent-api.json")
+  (
+    base.join("feather-open-browser").join("agent-api.json"),
+    Some(base.join("open-browser").join("agent-api.json")),
+  )
 }
 
 fn read_json_body(request: &mut tiny_http::Request) -> Value {

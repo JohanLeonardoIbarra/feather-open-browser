@@ -107,6 +107,10 @@ pub struct SpaceManager {
   pub spaces: HashMap<String, Space>,
   pub active_space_id: Option<String>,
   pub app_handle: AppHandle,
+  #[cfg(target_os = "linux")]
+  pub has_active_flag: Arc<std::sync::atomic::AtomicBool>,
+  #[cfg(target_os = "linux")]
+  pub gtk_hook_installed: Arc<std::sync::atomic::AtomicBool>,
 }
 
 pub type SpaceManagerHandle = Arc<Mutex<SpaceManager>>;
@@ -117,6 +121,10 @@ impl SpaceManager {
       spaces: HashMap::new(),
       active_space_id: None,
       app_handle,
+      #[cfg(target_os = "linux")]
+      has_active_flag: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+      #[cfg(target_os = "linux")]
+      gtk_hook_installed: Arc::new(std::sync::atomic::AtomicBool::new(false)),
     }
   }
 
@@ -141,7 +149,21 @@ impl SpaceManager {
     let size = window.inner_size().unwrap_or(tauri::PhysicalSize::new(1380, 900));
     let scale = window.scale_factor().unwrap_or(1.0);
     let logical = size.to_logical::<f64>(scale);
-    let content_height = (logical.height - TOOLBAR_HEIGHT).max(0.0);
+    let content_height = (logical.height - TOOLBAR_HEIGHT).max(0.0) as i32;
+
+    let has_active_tab = self.active_space_id.as_ref().map_or(false, |s_id| {
+      self.spaces.get(s_id).map_or(false, |s| s.active_tab_id.is_some())
+    });
+
+    if let Some(main_wv) = self.app_handle.get_webview("main") {
+      if has_active_tab {
+        let _ = main_wv.set_position(LogicalPosition::new(0.0, 0.0));
+        let _ = main_wv.set_size(LogicalSize::new(logical.width, TOOLBAR_HEIGHT));
+      } else {
+        let _ = main_wv.set_position(LogicalPosition::new(0.0, 0.0));
+        let _ = main_wv.set_size(LogicalSize::new(logical.width, logical.height));
+      }
+    }
 
     for space in self.spaces.values() {
       for tab in &space.tabs {
@@ -151,10 +173,82 @@ impl SpaceManager {
         if let Some(wv) = self.app_handle.get_webview(&tab.label) {
           if is_active {
             let _ = wv.set_position(LogicalPosition::new(0.0, TOOLBAR_HEIGHT));
-            let _ = wv.set_size(LogicalSize::new(logical.width, content_height));
+            let _ = wv.set_size(LogicalSize::new(logical.width, content_height as f64));
             let _ = wv.show();
           } else {
             let _ = wv.hide();
+          }
+        }
+      }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+      use gtk::prelude::*;
+      use std::sync::atomic::Ordering;
+
+      self.has_active_flag.store(has_active_tab, Ordering::SeqCst);
+      let flag = self.has_active_flag.clone();
+      let installed = self.gtk_hook_installed.clone();
+
+      if let Some(main_wv) = self.app_handle.get_webview("main") {
+        let _ = main_wv.with_webview(move |platform_wv| {
+          let widget = platform_wv.inner();
+          if let Some(parent) = widget.parent() {
+            if let Ok(vbox) = parent.dynamic_cast::<gtk::Box>() {
+              if installed.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).is_ok() {
+                let flag_cb = flag.clone();
+                vbox.connect_size_allocate(move |vbox, total_alloc| {
+                  let has_active = flag_cb.load(Ordering::SeqCst);
+                  let children = vbox.children();
+                  if children.len() > 1 && has_active {
+                    let toolbar_h = TOOLBAR_HEIGHT as i32;
+                    let alloc0 = gtk::Allocation::new(
+                      total_alloc.x(),
+                      total_alloc.y(),
+                      total_alloc.width(),
+                      toolbar_h,
+                    );
+                    children[0].size_allocate(&alloc0);
+
+                    let content_y = total_alloc.y() + toolbar_h;
+                    let content_h = (total_alloc.height() - toolbar_h).max(0);
+
+                    for child in children.iter().skip(1) {
+                      if child.is_visible() {
+                        let alloc_c = gtk::Allocation::new(
+                          total_alloc.x(),
+                          content_y,
+                          total_alloc.width(),
+                          content_h,
+                        );
+                        child.size_allocate(&alloc_c);
+                      }
+                    }
+                  }
+                });
+              }
+              vbox.queue_resize();
+            }
+          }
+        });
+      }
+
+      for space in self.spaces.values() {
+        for tab in &space.tabs {
+          let is_active = self.active_space_id.as_deref() == Some(&space.id)
+            && space.active_tab_id.as_deref() == Some(&tab.id);
+
+          if let Some(wv) = self.app_handle.get_webview(&tab.label) {
+            let _ = wv.with_webview(move |platform_wv| {
+              let widget = platform_wv.inner();
+              if is_active {
+                widget.show();
+              } else {
+                widget.hide();
+              }
+              widget.queue_resize();
+            });
           }
         }
       }
@@ -621,111 +715,16 @@ impl SpaceManager {
 
     let actions_list = actions.as_array().cloned().unwrap_or_default();
     let wv = app_handle.get_webview(&label).ok_or("Webview de la pestaña no disponible")?;
+    let fast = std::env::var("OPEN_BROWSER_FAST_ACTIONS").as_deref() == Ok("1");
 
     let mut results = Vec::new();
 
     for action in actions_list {
       let action_type = action.get("type").and_then(|v| v.as_str()).unwrap_or("");
       match action_type {
-        "click" => {
-          let r = action.get("ref").and_then(|v| v.as_str()).unwrap_or("");
-          let script = format!(
-            r#"
-              JSON.stringify((function() {{
-                const el = window.__openBrowserAgentRefs?.get({:?});
-                if (!el || !el.isConnected) return {{ ok: false, error: 'Elemento no encontrado o desconectado; toma un snapshot nuevo.' }};
-                el.scrollIntoView({{ block: 'center', inline: 'center', behavior: 'auto' }});
-                el.focus();
-                el.click();
-                return {{ ok: true }};
-              }})())
-            "#,
-            r
-          );
-          if let Err(e) = eval_js_async(&wv, &script).await {
-            return Err(e);
-          }
-          results.push(serde_json::json!({ "ok": true }));
-        }
-
-        "fill" => {
-          let r = action.get("ref").and_then(|v| v.as_str()).unwrap_or("");
-          let text = action.get("value").or_else(|| action.get("text")).and_then(|v| v.as_str()).unwrap_or("");
-          let script = format!(
-            r#"
-              JSON.stringify((function() {{
-                const el = window.__openBrowserAgentRefs?.get({:?});
-                if (!el || !el.isConnected) return {{ ok: false, error: 'Elemento no encontrado o desconectado; toma un snapshot nuevo.' }};
-                el.scrollIntoView({{ block: 'center', inline: 'center', behavior: 'auto' }});
-                el.focus();
-                el.value = {:?};
-                el.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                el.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                return {{ ok: true }};
-              }})())
-            "#,
-            r, text
-          );
-          if let Err(e) = eval_js_async(&wv, &script).await {
-            return Err(e);
-          }
-          results.push(serde_json::json!({ "ok": true }));
-        }
-
-        "press" => {
-          let key = action.get("key").and_then(|v| v.as_str()).unwrap_or("Enter");
-          let script = format!(
-            r#"
-              JSON.stringify((function() {{
-                const active = document.activeElement || document.body;
-                active.dispatchEvent(new KeyboardEvent('keydown', {{ key: {:?}, bubbles: true }}));
-                active.dispatchEvent(new KeyboardEvent('keyup', {{ key: {:?}, bubbles: true }}));
-                return {{ ok: true }};
-              }})())
-            "#,
-            key, key
-          );
-          if let Err(e) = eval_js_async(&wv, &script).await {
-            return Err(e);
-          }
-          results.push(serde_json::json!({ "ok": true }));
-        }
-
-        "hover" => {
-          let r = action.get("ref").and_then(|v| v.as_str()).unwrap_or("");
-          let script = format!(
-            r#"
-              JSON.stringify((function() {{
-                const el = window.__openBrowserAgentRefs?.get({:?});
-                if (!el || !el.isConnected) return {{ ok: false, error: 'Elemento no encontrado' }};
-                el.dispatchEvent(new MouseEvent('mouseover', {{ bubbles: true }}));
-                return {{ ok: true }};
-              }})())
-            "#,
-            r
-          );
-          if let Err(e) = eval_js_async(&wv, &script).await {
-            return Err(e);
-          }
-          results.push(serde_json::json!({ "ok": true }));
-        }
-
-        "scroll" => {
-          let dx = action.get("deltaX").and_then(|v| v.as_f64()).unwrap_or(0.0);
-          let dy = action.get("deltaY").and_then(|v| v.as_f64()).unwrap_or(0.0);
-          let script = format!(
-            r#"
-              JSON.stringify((function() {{
-                window.scrollBy({{ top: {}, left: {}, behavior: 'auto' }});
-                return {{ ok: true }};
-              }})())
-            "#,
-            dy, dx
-          );
-          if let Err(e) = eval_js_async(&wv, &script).await {
-            return Err(e);
-          }
-          results.push(serde_json::json!({ "ok": true }));
+        "click" | "fill" | "press" | "hover" | "scroll" => {
+          let res = execute_visual_action(&wv, &action, fast).await?;
+          results.push(res);
         }
 
         "navigate" => {
@@ -888,5 +887,44 @@ async fn eval_js_async(wv: &tauri::Webview, script: &str) -> Result<String, Stri
     Ok(Ok(val)) => Ok(val),
     Ok(Err(_)) => Err("El canal de respuesta de JavaScript se cerró".into()),
     Err(_) => Err("Timeout esperando respuesta de la página web".into()),
+  }
+}
+
+async fn execute_visual_action(
+  wv: &tauri::Webview,
+  action: &serde_json::Value,
+  fast: bool,
+) -> Result<serde_json::Value, String> {
+  let script = crate::visual_agent::build_visual_action_script(action, fast);
+  let _ = eval_js_async(wv, &script).await?;
+
+  let check_script = r#"
+    JSON.stringify(window.__open_browser_action_status || { done: true, ok: true })
+  "#;
+
+  let start = tokio::time::Instant::now();
+  loop {
+    tokio::time::sleep(tokio::time::Duration::from_millis(30)).await;
+    let res_raw = eval_js_async(wv, check_script).await.unwrap_or_default();
+    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&res_raw) {
+      let val = if let serde_json::Value::String(s) = parsed {
+        serde_json::from_str::<serde_json::Value>(&s).unwrap_or(serde_json::json!({}))
+      } else {
+        parsed
+      };
+
+      if val.get("done").and_then(|v| v.as_bool()) == Some(true) {
+        if val.get("ok").and_then(|v| v.as_bool()) == Some(true) {
+          return Ok(serde_json::json!({ "ok": true }));
+        } else {
+          let err_msg = val.get("error").and_then(|v| v.as_str()).unwrap_or("Error en acción");
+          return Err(err_msg.to_string());
+        }
+      }
+    }
+
+    if start.elapsed() > tokio::time::Duration::from_secs(10) {
+      return Err("Timeout esperando que la acción visual complete".into());
+    }
   }
 }

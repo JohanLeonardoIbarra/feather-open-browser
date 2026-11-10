@@ -808,6 +808,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "feather-open-browser"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "glib",
+ "gtk",
+ "log",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-log",
+ "tiny_http",
+ "tokio",
+ "url",
+ "uuid",
+ "webkit2gtk",
+]
+
+[[package]]
 name = "fern"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2188,23 +2208,6 @@ name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
-
-[[package]]
-name = "open-browser"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "log",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-log",
- "tiny_http",
- "tokio",
- "url",
- "uuid",
-]
 
 [[package]]
 name = "option-ext"

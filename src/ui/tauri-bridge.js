@@ -1,4 +1,4 @@
-// Tauri <-> Open Browser UI Bridge
+// Tauri <-> Feather Open Browser UI Bridge
 // Bridges Tauri v2 IPC commands and events to the standard window.browser interface
 
 if (!window.browser && window.__TAURI__) {
