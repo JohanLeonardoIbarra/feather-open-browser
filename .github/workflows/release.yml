@@ -1,0 +1,117 @@
+name: Release Multiplatform Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build ${{ matrix.platform-name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform-name: linux-x64
+            target-desc: AppImage & Deb (Linux)
+          - os: windows-latest
+            platform-name: windows-x64
+            target-desc: Portable .exe & Zip (Windows)
+          - os: macos-latest
+            platform-name: macos-universal
+            target-desc: DMG (macOS)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Setup Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libgtk-3-dev
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Run checks
+        run: npm run check
+
+      # --- Linux Build ---
+      - name: Build Linux Bundles (AppImage & Deb)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          npx tauri build --bundles appimage,deb
+          mkdir -p dist-release
+          cp src-tauri/target/release/bundle/appimage/*.AppImage dist-release/ 2>/dev/null || true
+          cp src-tauri/target/release/bundle/deb/*.deb dist-release/ 2>/dev/null || true
+
+      # --- Windows Build ---
+      - name: Build Windows Executables (Portable .exe & Zip)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          npx tauri build
+          New-Item -ItemType Directory -Force -Path dist-release
+          Copy-Item src-tauri/target/release/feather-open-browser.exe -Destination dist-release/feather-open-browser-portable.exe
+          Compress-Archive -Path dist-release/feather-open-browser-portable.exe -DestinationPath dist-release/feather-open-browser-windows-x64-portable.zip
+          if (Test-Path src-tauri/target/release/bundle/nsis/*.exe) {
+            Copy-Item src-tauri/target/release/bundle/nsis/*.exe -Destination dist-release/
+          }
+          if (Test-Path src-tauri/target/release/bundle/msi/*.msi) {
+            Copy-Item src-tauri/target/release/bundle/msi/*.msi -Destination dist-release/
+          }
+
+      # --- macOS Build ---
+      - name: Build macOS DMG (Universal)
+        if: matrix.os == 'macos-latest'
+        run: |
+          npx tauri build --target universal-apple-darwin --bundles dmg || npx tauri build --bundles dmg
+          mkdir -p dist-release
+          find src-tauri/target -name "*.dmg" -exec cp {} dist-release/ \;
+
+      # --- Publish & Artifacts ---
+      - name: Publish assets to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: dist-release/*
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: feather-open-browser-${{ matrix.platform-name }}
+          path: dist-release/*
+          if-no-files-found: error

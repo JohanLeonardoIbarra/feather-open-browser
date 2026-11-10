@@ -1,4 +1,7 @@
-use std::fs::{create_dir_all, remove_file, set_permissions, write, Permissions};
+use std::fs::{create_dir_all, remove_file, write};
+#[cfg(unix)]
+use std::fs::{set_permissions, Permissions};
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -41,6 +44,7 @@ impl AgentApiServer {
     write(&config_path, &json_str)
       .map_err(|e| format!("Error escribiendo agent-api.json en {:?}: {}", config_path, e))?;
 
+    #[cfg(unix)]
     let _ = set_permissions(&config_path, Permissions::from_mode(0o600));
 
     if let Some(ref legacy) = legacy_config_path {
@@ -48,6 +52,7 @@ impl AgentApiServer {
         let _ = create_dir_all(parent);
       }
       let _ = write(legacy, &json_str);
+      #[cfg(unix)]
       let _ = set_permissions(legacy, Permissions::from_mode(0o600));
     }
 
