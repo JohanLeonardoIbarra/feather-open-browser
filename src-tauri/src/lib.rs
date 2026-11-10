@@ -1,14 +1,52 @@
+pub mod commands;
+pub mod space_manager;
+pub mod state;
+
+use std::sync::Arc;
+use tauri::Manager;
+use tokio::sync::Mutex;
+use space_manager::{SpaceManager, SpaceManagerHandle};
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    .plugin(
+      tauri_plugin_log::Builder::default()
+        .level(log::LevelFilter::Info)
+        .build(),
+    )
+    .invoke_handler(tauri::generate_handler![
+      commands::get_state,
+      commands::create_tab,
+      commands::activate_tab,
+      commands::close_tab,
+      commands::navigate,
+      commands::go_back,
+      commands::go_forward,
+      commands::reload,
+      commands::create_space,
+      commands::activate_space,
+      commands::close_space,
+      commands::get_api_info,
+    ])
     .setup(|app| {
-      if cfg!(debug_assertions) {
-        app.handle().plugin(
-          tauri_plugin_log::Builder::default()
-            .level(log::LevelFilter::Info)
-            .build(),
-        )?;
+      let handle = app.handle().clone();
+      let space_manager: SpaceManagerHandle = Arc::new(Mutex::new(SpaceManager::new(handle.clone())));
+      app.manage(space_manager.clone());
+
+      if let Some(main_window) = app.get_window("main") {
+        let mgr_for_resize = space_manager.clone();
+        main_window.on_window_event(move |event| {
+          if let tauri::WindowEvent::Resized(_) = event {
+            let mgr_arc = mgr_for_resize.clone();
+            tauri::async_runtime::spawn(async move {
+              let mgr = mgr_arc.lock().await;
+              mgr.layout();
+            });
+          }
+        });
       }
+
       Ok(())
     })
     .run(tauri::generate_context!())
