@@ -517,4 +517,343 @@ impl SpaceManager {
       }
     }
   }
+
+  pub async fn snapshot(
+    manager_arc: &SpaceManagerHandle,
+    space_id: &str,
+    tab_id: &str,
+  ) -> Result<serde_json::Value, String> {
+    let (app_handle, label) = {
+      let mgr = manager_arc.lock().await;
+      let space = mgr.spaces.get(space_id).ok_or("No existe ese Space.")?;
+      let tab = space.tabs.iter().find(|t| t.id == tab_id).ok_or("No existe esa pestaña.")?;
+      (mgr.app_handle.clone(), tab.label.clone())
+    };
+
+    let wv = app_handle.get_webview(&label).ok_or("Webview de la pestaña no disponible")?;
+
+    let script = r#"
+      JSON.stringify((function() {
+        const refs = new Map();
+        window.__openBrowserAgentRefs = refs;
+        let nextRef = 1;
+        const visible = (el) => {
+          const rect = el.getBoundingClientRect();
+          const style = getComputedStyle(el);
+          return rect.width > 0 && rect.height > 0 && style.display !== 'none' &&
+            style.visibility !== 'hidden' && style.opacity !== '0';
+        };
+        const text = (el) => (el.getAttribute('aria-label') || el.innerText ||
+          el.value || el.getAttribute('placeholder') || el.getAttribute('alt') ||
+          el.getAttribute('title') || '').replace(/\s+/g, ' ').trim().slice(0, 240);
+        const role = (el) => {
+          if (el.getAttribute('role')) return el.getAttribute('role');
+          const tag = el.tagName.toLowerCase();
+          if (tag === 'a') return 'link';
+          if (tag === 'button') return 'button';
+          if (tag === 'textarea') return 'textbox';
+          if (tag === 'select') return 'combobox';
+          if (tag === 'input') {
+            const type = (el.getAttribute('type') || 'text').toLowerCase();
+            if (type === 'checkbox') return 'checkbox';
+            if (type === 'radio') return 'radio';
+            if (type === 'submit' || type === 'button') return 'button';
+            return 'textbox';
+          }
+          return 'generic';
+        };
+        const candidates = Array.from(document.querySelectorAll(
+          'a[href],button,input,textarea,select,[role],[contenteditable="true"]'
+        )).filter(visible).slice(0, 180);
+        const rows = [];
+        for (const el of candidates) {
+          const ref = 'e' + nextRef++;
+          refs.set(ref, el);
+          const name = text(el) || '(sin nombre)';
+          const href = el instanceof HTMLAnchorElement ? ' -> ' + el.href : '';
+          const value = (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)
+            ? ' value=' + JSON.stringify(el.value.slice(0, 100)) : '';
+          rows.push(role(el) + ' ' + JSON.stringify(name) + ' [ref=' + ref + ']' + href + value);
+        }
+        const textBlocks = Array.from(document.querySelectorAll('h1,h2,h3,p,li'))
+          .filter(visible).slice(0, 100)
+          .map((el) => el.tagName.toLowerCase() + ': ' + (el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 280))
+          .filter((line) => line.length > 4);
+        return {
+          title: document.title,
+          url: location.href,
+          elements: rows,
+          text: textBlocks,
+          truncated: candidates.length >= 180,
+          consoleErrors: [],
+          networkRequestsCount: 0,
+          note: 'Tauri v2 agent snapshot: el snapshot cubre el documento principal.'
+        };
+      })())
+    "#;
+
+    let raw = eval_js_async(&wv, script).await?;
+    let parsed: serde_json::Value = match serde_json::from_str(&raw) {
+      Ok(serde_json::Value::String(inner)) => serde_json::from_str(&inner).unwrap_or(serde_json::json!({ "raw": inner })),
+      Ok(val) => val,
+      Err(_) => serde_json::json!({ "raw": raw }),
+    };
+
+    Ok(parsed)
+  }
+
+  pub async fn run_actions(
+    manager_arc: &SpaceManagerHandle,
+    space_id: &str,
+    tab_id: &str,
+    actions: serde_json::Value,
+  ) -> Result<serde_json::Value, String> {
+    let (app_handle, label) = {
+      let mut mgr = manager_arc.lock().await;
+      if let Some(space) = mgr.spaces.get_mut(space_id) {
+        space.busy_count += 1;
+      }
+      mgr.emit_state();
+      let space = mgr.spaces.get(space_id).ok_or("No existe ese Space.")?;
+      let tab = space.tabs.iter().find(|t| t.id == tab_id).ok_or("No existe esa pestaña.")?;
+      (mgr.app_handle.clone(), tab.label.clone())
+    };
+
+    let actions_list = actions.as_array().cloned().unwrap_or_default();
+    let wv = app_handle.get_webview(&label).ok_or("Webview de la pestaña no disponible")?;
+
+    let mut final_result = Ok(serde_json::json!({ "ok": true }));
+
+    for action in actions_list {
+      let action_type = action.get("type").and_then(|v| v.as_str()).unwrap_or("");
+      match action_type {
+        "click" => {
+          let r = action.get("ref").and_then(|v| v.as_str()).unwrap_or("");
+          let script = format!(
+            r#"
+              JSON.stringify((function() {{
+                const el = window.__openBrowserAgentRefs?.get({:?});
+                if (!el || !el.isConnected) return {{ ok: false, error: 'Elemento no encontrado o desconectado; toma un snapshot nuevo.' }};
+                el.scrollIntoView({{ block: 'center', inline: 'center', behavior: 'auto' }});
+                el.focus();
+                el.click();
+                return {{ ok: true }};
+              }})())
+            "#,
+            r
+          );
+          if let Err(e) = eval_js_async(&wv, &script).await {
+            final_result = Err(e);
+            break;
+          }
+        }
+
+        "fill" => {
+          let r = action.get("ref").and_then(|v| v.as_str()).unwrap_or("");
+          let text = action.get("text").and_then(|v| v.as_str()).unwrap_or("");
+          let script = format!(
+            r#"
+              JSON.stringify((function() {{
+                const el = window.__openBrowserAgentRefs?.get({:?});
+                if (!el || !el.isConnected) return {{ ok: false, error: 'Elemento no encontrado o desconectado; toma un snapshot nuevo.' }};
+                el.scrollIntoView({{ block: 'center', inline: 'center', behavior: 'auto' }});
+                el.focus();
+                el.value = {:?};
+                el.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                el.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                return {{ ok: true }};
+              }})())
+            "#,
+            r, text
+          );
+          if let Err(e) = eval_js_async(&wv, &script).await {
+            final_result = Err(e);
+            break;
+          }
+        }
+
+        "press" => {
+          let key = action.get("key").and_then(|v| v.as_str()).unwrap_or("Enter");
+          let script = format!(
+            r#"
+              JSON.stringify((function() {{
+                const active = document.activeElement || document.body;
+                active.dispatchEvent(new KeyboardEvent('keydown', {{ key: {:?}, bubbles: true }}));
+                active.dispatchEvent(new KeyboardEvent('keyup', {{ key: {:?}, bubbles: true }}));
+                return {{ ok: true }};
+              }})())
+            "#,
+            key, key
+          );
+          if let Err(e) = eval_js_async(&wv, &script).await {
+            final_result = Err(e);
+            break;
+          }
+        }
+
+        "hover" => {
+          let r = action.get("ref").and_then(|v| v.as_str()).unwrap_or("");
+          let script = format!(
+            r#"
+              JSON.stringify((function() {{
+                const el = window.__openBrowserAgentRefs?.get({:?});
+                if (!el || !el.isConnected) return {{ ok: false, error: 'Elemento no encontrado' }};
+                el.dispatchEvent(new MouseEvent('mouseover', {{ bubbles: true }}));
+                return {{ ok: true }};
+              }})())
+            "#,
+            r
+          );
+          if let Err(e) = eval_js_async(&wv, &script).await {
+            final_result = Err(e);
+            break;
+          }
+        }
+
+        "scroll" => {
+          let dx = action.get("deltaX").and_then(|v| v.as_f64()).unwrap_or(0.0);
+          let dy = action.get("deltaY").and_then(|v| v.as_f64()).unwrap_or(0.0);
+          let script = format!(
+            r#"
+              JSON.stringify((function() {{
+                window.scrollBy({{ top: {}, left: {}, behavior: 'auto' }});
+                return {{ ok: true }};
+              }})())
+            "#,
+            dy, dx
+          );
+          if let Err(e) = eval_js_async(&wv, &script).await {
+            final_result = Err(e);
+            break;
+          }
+        }
+
+        "wait" => {
+          let ms = action.get("durationMs").and_then(|v| v.as_u64()).unwrap_or(100);
+          tokio::time::sleep(tokio::time::Duration::from_millis(ms)).await;
+        }
+
+        _ => {}
+      }
+    }
+
+    {
+      let mut mgr = manager_arc.lock().await;
+      if let Some(space) = mgr.spaces.get_mut(space_id) {
+        if space.busy_count > 0 {
+          space.busy_count -= 1;
+        }
+      }
+      mgr.emit_state();
+    }
+
+    final_result
+  }
+
+  pub async fn get_html(
+    manager_arc: &SpaceManagerHandle,
+    space_id: &str,
+    tab_id: &str,
+    ref_param: Option<String>,
+  ) -> Result<serde_json::Value, String> {
+    let (app_handle, label) = {
+      let mgr = manager_arc.lock().await;
+      let space = mgr.spaces.get(space_id).ok_or("No existe ese Space.")?;
+      let tab = space.tabs.iter().find(|t| t.id == tab_id).ok_or("No existe esa pestaña.")?;
+      (mgr.app_handle.clone(), tab.label.clone())
+    };
+
+    let wv = app_handle.get_webview(&label).ok_or("Webview no disponible")?;
+    let script = match ref_param {
+      Some(r) => format!(
+        r#"
+          JSON.stringify((function() {{
+            const el = window.__openBrowserAgentRefs?.get({:?});
+            if (!el || !el.isConnected) return null;
+            return el.outerHTML;
+          }})())
+        "#,
+        r
+      ),
+      None => r#"
+        JSON.stringify((function() {
+          return document.documentElement ? document.documentElement.outerHTML : '';
+        })())
+      "#.to_string(),
+    };
+
+    let raw = eval_js_async(&wv, &script).await?;
+    let html_val: Option<String> = match serde_json::from_str(&raw) {
+      Ok(serde_json::Value::String(s)) => Some(s),
+      _ => None,
+    };
+
+    Ok(serde_json::json!({
+      "html": html_val.unwrap_or_default()
+    }))
+  }
+
+  pub async fn screenshot(
+    manager_arc: &SpaceManagerHandle,
+    space_id: &str,
+    tab_id: &str,
+  ) -> Result<serde_json::Value, String> {
+    let (app_handle, label) = {
+      let mgr = manager_arc.lock().await;
+      let space = mgr.spaces.get(space_id).ok_or("No existe ese Space.")?;
+      let tab = space.tabs.iter().find(|t| t.id == tab_id).ok_or("No existe esa pestaña.")?;
+      (mgr.app_handle.clone(), tab.label.clone())
+    };
+
+    let wv = app_handle.get_webview(&label).ok_or("Webview no disponible")?;
+    let script = r#"
+      JSON.stringify((function() {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = window.innerWidth || 1280;
+          canvas.height = window.innerHeight || 720;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#101318';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          const dataUrl = canvas.toDataURL('image/png');
+          return {
+            width: canvas.width,
+            height: canvas.height,
+            mimeType: 'image/png',
+            dataUrl: dataUrl,
+            base64: dataUrl.split(',')[1] || ''
+          };
+        } catch(e) {
+          return null;
+        }
+      })())
+    "#;
+
+    let raw = eval_js_async(&wv, script).await?;
+    let parsed: serde_json::Value = match serde_json::from_str(&raw) {
+      Ok(serde_json::Value::String(inner)) => serde_json::from_str(&inner).unwrap_or(serde_json::json!({})),
+      Ok(val) => val,
+      Err(_) => serde_json::json!({}),
+    };
+
+    Ok(parsed)
+  }
+}
+
+async fn eval_js_async(wv: &tauri::Webview, script: &str) -> Result<String, String> {
+  let (tx, rx) = tokio::sync::oneshot::channel();
+  let tx_cell = std::sync::Arc::new(std::sync::Mutex::new(Some(tx)));
+  wv.eval_with_callback(script, move |result| {
+    if let Ok(mut lock) = tx_cell.lock() {
+      if let Some(sender) = lock.take() {
+        let _ = sender.send(result);
+      }
+    }
+  }).map_err(|e| format!("Error enviando eval: {}", e))?;
+
+  match tokio::time::timeout(tokio::time::Duration::from_secs(10), rx).await {
+    Ok(Ok(val)) => Ok(val),
+    Ok(Err(_)) => Err("El canal de respuesta de JavaScript se cerró".into()),
+    Err(_) => Err("Timeout esperando respuesta de la página web".into()),
+  }
 }

@@ -97,7 +97,6 @@ pub async fn close_space(
 }
 
 #[tauri::command]
-pub async fn get_api_info() -> Result<Option<ApiInfo>, String> {
-  // Phase 3 will populate this when the Rust HTTP Agent API server starts
-  Ok(None)
+pub async fn get_api_info(state: State<'_, Option<ApiInfo>>) -> Result<Option<ApiInfo>, String> {
+  Ok(state.inner().clone())
 }

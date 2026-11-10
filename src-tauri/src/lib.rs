@@ -1,3 +1,4 @@
+pub mod agent_api;
 pub mod commands;
 pub mod space_manager;
 pub mod state;
@@ -33,6 +34,19 @@ pub fn run() {
       let handle = app.handle().clone();
       let space_manager: SpaceManagerHandle = Arc::new(Mutex::new(SpaceManager::new(handle.clone())));
       app.manage(space_manager.clone());
+
+      match agent_api::AgentApiServer::start(space_manager.clone()) {
+        Ok(server) => {
+          let info = Some(server.to_api_info());
+          app.manage(info);
+          app.manage(server);
+        }
+        Err(err) => {
+          log::error!("No se pudo iniciar el Agent API Server: {}", err);
+          let info: Option<state::ApiInfo> = None;
+          app.manage(info);
+        }
+      }
 
       if let Some(main_window) = app.get_window("main") {
         let mgr_for_resize = space_manager.clone();
