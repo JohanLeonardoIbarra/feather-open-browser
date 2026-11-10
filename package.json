@@ -15,7 +15,7 @@
     "smoke": "node scripts/smoke.mjs",
     "mcp": "node scripts/mcp-server.mjs",
     "test": "node --test",
-    "check": "node --check src/main.js && node --check src/preload.cjs && node --check src/browser/navigation.js && node --check src/browser/space-manager.js && node --check src/browser/visual-agent.js && node --check src/agent-api/server.js && node --check src/agent-api/client.js && node --check src/agent-api/mcp-server.js && node --check src/ui/renderer.js && node --check scripts/mcp-server.mjs && node --check scripts/smoke.mjs && node --check test/visual-agent.test.js",
+    "check": "node --check src/main.js && node --check src/preload.cjs && node --check src/browser/navigation.js && node --check src/browser/space-manager.js && node --check src/browser/visual-agent.js && node --check src/agent-api/server.js && node --check src/agent-api/client.js && node --check src/agent-api/mcp-server.js && node --check src/ui/renderer.js && node --check src/ui/tauri-bridge.js && node --check scripts/mcp-server.mjs && node --check scripts/smoke.mjs && node --check test/visual-agent.test.js && cargo check --manifest-path src-tauri/Cargo.toml",
     "dist": "electron-builder --linux AppImage --publish never",
     "dist:dir": "electron-builder --linux --dir",
     "dist:linux": "electron-builder --linux AppImage --publish never",
