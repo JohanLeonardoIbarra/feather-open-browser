@@ -9,6 +9,9 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
     "smoke": "node scripts/smoke.mjs",
     "mcp": "node scripts/mcp-server.mjs",
     "test": "node --test",
@@ -20,6 +23,8 @@
     "dist:mac": "electron-builder --mac dmg zip --publish never"
   },
   "devDependencies": {
+    "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/cli": "^2.12.4",
     "electron": "^45.2.1",
     "electron-builder": "^26.18.0"
   },
