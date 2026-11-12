@@ -1,0 +1,14 @@
+{
+  "name": "feather-open-browser-mcp-monorepo",
+  "version": "0.0.2",
+  "private": true,
+  "description": "Feather Open Browser MCP server and agent Skill.",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "start": "npm run start --workspace=@feather-open-browser/mcp-server",
+    "check": "npm run check --workspace=@feather-open-browser/mcp-server",
+    "test": "npm run test --workspace=@feather-open-browser/mcp-server"
+  }
+}

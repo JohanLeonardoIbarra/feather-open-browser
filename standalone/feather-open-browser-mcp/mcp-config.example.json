@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "feather-open-browser": {
+      "command": "node",
+      "args": [
+        "/ABSOLUTE/PATH/TO/feather-open-browser-mcp/packages/mcp-server/server.mjs"
+      ]
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "@feather-open-browser/skill",
+  "version": "0.0.2",
+  "private": true,
+  "description": "Agent Skill for safe and efficient use of Feather Open Browser.",
+  "files": [
+    "SKILL.md"
+  ]
+}

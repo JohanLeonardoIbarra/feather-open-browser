@@ -1,0 +1,19 @@
+{
+  "name": "@feather-open-browser/mcp-server",
+  "version": "0.0.2",
+  "private": true,
+  "description": "Standalone stdio MCP server for the Feather Open Browser desktop app.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "check": "node --check server.mjs && node --check mcp-server.js && node --check client.js",
+    "test": "node scripts/test-mcp.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  }
+}
