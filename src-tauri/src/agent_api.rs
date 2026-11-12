@@ -264,16 +264,44 @@ fn determine_config_paths() -> (PathBuf, Option<PathBuf>) {
   if let Ok(user_data) = std::env::var("OPEN_BROWSER_USER_DATA") {
     return (PathBuf::from(user_data).join("agent-api.json"), None);
   }
-  let base = std::env::var("XDG_CONFIG_HOME")
-    .map(PathBuf::from)
-    .unwrap_or_else(|_| {
-      let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-      PathBuf::from(home).join(".config")
-    });
+  let base = default_config_base_dir();
   (
     base.join("feather-open-browser").join("agent-api.json"),
     Some(base.join("open-browser").join("agent-api.json")),
   )
+}
+
+#[cfg(target_os = "windows")]
+fn default_config_base_dir() -> PathBuf {
+  std::env::var_os("APPDATA")
+    .map(PathBuf::from)
+    .or_else(|| {
+      std::env::var_os("USERPROFILE")
+        .or_else(|| std::env::var_os("HOME"))
+        .map(|home| PathBuf::from(home).join("AppData").join("Roaming"))
+    })
+    .unwrap_or_else(|| PathBuf::from(".").join("AppData").join("Roaming"))
+}
+
+#[cfg(target_os = "macos")]
+fn default_config_base_dir() -> PathBuf {
+  std::env::var_os("HOME")
+    .map(PathBuf::from)
+    .unwrap_or_else(|| PathBuf::from("."))
+    .join("Library")
+    .join("Application Support")
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+fn default_config_base_dir() -> PathBuf {
+  std::env::var_os("XDG_CONFIG_HOME")
+    .map(PathBuf::from)
+    .unwrap_or_else(|| {
+      std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".config")
+    })
 }
 
 fn read_json_body(request: &mut tiny_http::Request) -> Value {
