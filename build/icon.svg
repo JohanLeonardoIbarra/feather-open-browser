@@ -1,31 +1,86 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
+    <!-- Deep rich black background -->
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0e1726" />
-      <stop offset="50%" stop-color="#070c14" />
-      <stop offset="100%" stop-color="#020408" />
+      <stop offset="0%" stop-color="#111318" />
+      <stop offset="55%" stop-color="#060709" />
+      <stop offset="100%" stop-color="#000000" />
     </linearGradient>
-    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#38f9d7" />
-      <stop offset="100%" stop-color="#00f0ff" />
+
+    <!-- Pure high-contrast white gradient for the feather -->
+    <linearGradient id="featherWhite" x1="15%" y1="10%" x2="85%" y2="90%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="80%" stop-color="#f8fafc" />
+      <stop offset="100%" stop-color="#e2e8f0" />
     </linearGradient>
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="12" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
-    </filter>
+
+    <!-- Subtle radial illumination behind the globe -->
+    <radialGradient id="ambient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.08" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Tight, clean knockout mask so the meridian lines are super visible yet separated from the feather -->
+    <mask id="planetKnockout">
+      <rect x="0" y="0" width="512" height="512" fill="white" />
+      <!-- Slender halo around the feather vane -->
+      <path fill="black" stroke="black" stroke-width="18" stroke-linejoin="round" stroke-linecap="round" d="
+        M 404 92
+        C 332 98 256 140 204 208
+        C 174 248 158 292 162 328
+        C 202 334 254 316 302 272
+        C 356 222 392 156 404 92
+        Z" />
+      <!-- Halo around the quill stem -->
+      <path fill="none" stroke="black" stroke-width="22" stroke-linecap="round" d="
+        M 186 306
+        C 158 342 132 380 110 418" />
+    </mask>
   </defs>
 
-  <!-- Background squircle -->
-  <rect x="24" y="24" width="464" height="464" rx="104" fill="url(#bg)" stroke="#00f0ff" stroke-width="6" stroke-opacity="0.4" />
+  <!-- Squircle Container -->
+  <rect x="24" y="24" width="464" height="464" rx="106" fill="url(#bg)" stroke="#ffffff" stroke-width="3.5" stroke-opacity="0.26" />
+  <rect x="24" y="24" width="464" height="464" rx="106" fill="url(#ambient)" />
+  <rect x="29" y="29" width="454" height="454" rx="101" fill="none" stroke="#ffffff" stroke-width="1.2" stroke-opacity="0.08" />
 
-  <!-- Inner border highlight -->
-  <rect x="30" y="30" width="452" height="452" rx="98" fill="none" stroke="#ffffff" stroke-width="2" stroke-opacity="0.08" />
+  <!-- Meridian Planet (Clear, bold wireframe globe behind the feather) -->
+  <g mask="url(#planetKnockout)" fill="none" stroke="#ffffff" stroke-linecap="round">
+    <!-- Outer planet perimeter -->
+    <circle cx="256" cy="256" r="162" stroke-width="6" stroke-opacity="0.86" />
 
-  <!-- Brand circuit nodes & paths -->
-  <g transform="translate(68, 68) scale(15.666)" stroke="url(#cyanGrad)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#glow)">
-    <path d="M4 18h5l4-6 3 3h4M4 6h6l2 3m4 9 3-3"/>
-    <circle cx="4" cy="18" r="1.5" fill="#00f0ff"/>
-    <circle cx="20" cy="15" r="1.5" fill="#00f0ff"/>
-    <circle cx="4" cy="6" r="1.2" fill="#38f9d7"/>
+    <!-- Longitude Meridians -->
+    <ellipse cx="256" cy="256" rx="106" ry="162" stroke-width="4.5" stroke-opacity="0.64" />
+    <ellipse cx="256" cy="256" rx="46" ry="162" stroke-width="4.2" stroke-opacity="0.56" />
+
+    <!-- Equator & Latitude Parallels -->
+    <line x1="94" y1="256" x2="418" y2="256" stroke-width="4.5" stroke-opacity="0.64" />
+    <path d="M 114 178 Q 256 210 398 178" stroke-width="4.2" stroke-opacity="0.56" />
+    <path d="M 114 334 Q 256 302 398 334" stroke-width="4.2" stroke-opacity="0.56" />
+  </g>
+
+  <!-- Foreground Hero: Sleek, Iconic Feather (Pluma) -->
+  <g fill="url(#featherWhite)">
+    <!-- Unified Feather Silhouette with Continuous Curved Spine & Swept-Back Barbs -->
+    <path d="
+      M 404 92
+      C 340 96 280 124 234 170
+      L 224 212
+      L 218 186
+      C 180 228 158 278 160 324
+      C 161 327 165 327 168 323
+      C 214 260 282 184 364 118
+      C 367 116 370 119 367 122
+      C 286 190 216 268 164 340
+      C 142 368 124 394 108 418
+      C 104 424 113 430 118 423
+      C 136 398 156 370 178 342
+      C 216 340 256 324 292 294
+      L 252 292
+      L 304 282
+      C 326 260 346 234 362 204
+      L 312 208
+      L 368 190
+      C 386 158 398 124 404 92
+      Z" />
   </g>
 </svg>
