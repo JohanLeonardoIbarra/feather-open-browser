@@ -20,13 +20,13 @@ Feather Open Browser ofrece a los agentes un navegador dedicado, mientras mantie
 
 ## Descargas
 
-Última versión publicada: **v0.0.3**. Los enlaces descargan directamente los binarios de esa versión; [abre la página de Releases](https://github.com/JohanLeonardoIbarra/feather-open-browser/releases/latest) para comprobar la versión más reciente.
+Última versión publicada: **v0.0.4**. Los enlaces descargan directamente los binarios de esa versión; [abre la página de Releases](https://github.com/JohanLeonardoIbarra/feather-open-browser/releases/latest) para comprobar la versión más reciente.
 
 | Sistema | Descargas |
 | --- | --- |
-| **Windows x64** | [Instalador `.exe`](https://github.com/JohanLeonardoIbarra/feather-open-browser/releases/download/v0.0.3/Feather.Open.Browser_0.0.3_x64-setup.exe) · [MSI](https://github.com/JohanLeonardoIbarra/feather-open-browser/releases/download/v0.0.3/Feather.Open.Browser_0.0.3_x64_en-US.msi) · [Portable `.exe`](https://github.com/JohanLeonardoIbarra/feather-open-browser/releases/download/v0.0.3/feather-open-browser-portable.exe) · [ZIP portable](https://github.com/JohanLeonardoIbarra/feather-open-browser/releases/download/v0.0.3/feather-open-browser-windows-x64-portable.zip) |
-| **macOS Universal** | [DMG](https://github.com/JohanLeonardoIbarra/feather-open-browser/releases/download/v0.0.3/Feather.Open.Browser_0.0.3_universal.dmg) |
-| **Linux x64** | [AppImage](https://github.com/JohanLeonardoIbarra/feather-open-browser/releases/download/v0.0.3/Feather.Open.Browser_0.0.3_amd64.AppImage) · [DEB](https://github.com/JohanLeonardoIbarra/feather-open-browser/releases/download/v0.0.3/Feather.Open.Browser_0.0.3_amd64.deb) |
+| **Windows x64** | [Instalador `.exe`](https://github.com/JohanLeonardoIbarra/feather-open-browser/releases/download/v0.0.4/Feather.Open.Browser_0.0.4_x64-setup.exe) · [MSI](https://github.com/JohanLeonardoIbarra/feather-open-browser/releases/download/v0.0.4/Feather.Open.Browser_0.0.4_x64_en-US.msi) · [Portable `.exe`](https://github.com/JohanLeonardoIbarra/feather-open-browser/releases/download/v0.0.4/feather-open-browser-portable.exe) · [ZIP portable](https://github.com/JohanLeonardoIbarra/feather-open-browser/releases/download/v0.0.4/feather-open-browser-windows-x64-portable.zip) |
+| **macOS Universal** | [DMG](https://github.com/JohanLeonardoIbarra/feather-open-browser/releases/download/v0.0.4/Feather.Open.Browser_0.0.4_universal.dmg) |
+| **Linux x64** | [AppImage](https://github.com/JohanLeonardoIbarra/feather-open-browser/releases/download/v0.0.4/Feather.Open.Browser_0.0.4_amd64.AppImage) · [DEB](https://github.com/JohanLeonardoIbarra/feather-open-browser/releases/download/v0.0.4/Feather.Open.Browser_0.0.4_amd64.deb) |
 
 <p align="center">
   <a href="https://github.com/JohanLeonardoIbarra/feather-open-browser/releases/latest"><strong>Ver todas las versiones y descargas →</strong></a>
@@ -63,6 +63,6 @@ El repositorio del MCP incluye instrucciones de configuración y una Skill opcio
 
 ## Estado
 
-La navegación, interacción con páginas, snapshots, HTML y capturas están disponibles. Las herramientas de red y consola aún no devuelven datos en el binario Tauri actual.
+La navegación (con reporte de estado y errores de red/TLS), interacción con páginas (compatible con Trusted Types y HTMX), snapshots con tablas estructuradas, extracción por selector CSS, HTML acotado, capturas de pantalla y diagnósticos de red/consola están disponibles.
 
 <p align="center"><sub>¿Quieres desarrollar o modificar el proyecto? Consulta <a href="CONTRIBUTING.md">Contributing</a>.</sub></p>
