@@ -57,13 +57,15 @@ El cliente busca el archivo automáticamente en:
 - macOS: `~/Library/Application Support/feather-open-browser/agent-api.json`
 - Linux: `$XDG_CONFIG_HOME/feather-open-browser/agent-api.json` o `~/.config/feather-open-browser/agent-api.json`
 
-Para una ruta personalizada se puede definir `FEATHER_OPEN_BROWSER_CONFIG`. El MCP se ejecuta por stdio y consume la API del navegador; no abre un puerto de red propio. En el cliente de agente, configura la ruta local al script MCP correspondiente.
+Para una ruta personalizada se puede definir `FEATHER_OPEN_BROWSER_CONFIG`. El MCP se ejecuta por stdio y consume la API del navegador; no abre un puerto de red propio. En el cliente de agente, configura la ruta local al script MCP correspondiente según el sistema operativo donde se ejecute el cliente:
+
+- **Windows**: usa una ruta de Windows como `"C:/ruta/a/feather-open-browser-mcp/packages/mcp-server/server.mjs"` (no uses rutas de WSL `/mnt/c/...` cuando el cliente corra en Windows nativo).
+- **Linux / macOS**: usa una ruta POSIX absoluta como `"/home/usuario/feather-open-browser-mcp/packages/mcp-server/server.mjs"`.
 
 La configuración de Antigravity en `.agents/plugins/open-browser/mcp_config.json` puede contener rutas locales específicas de la máquina; actualízalas al cambiar de equipo.
 
-### Limitaciones conocidas
+### Mantenimiento del paquete MCP
 
-- El binario Tauri actual responde con listas vacías en las rutas de red y consola; las herramientas `browser_network_requests` y `browser_console_logs` están registradas, pero aún no proporcionan diagnósticos.
 - El paquete MCP independiente contiene copias autónomas del cliente y servidor de este repositorio. Si cambia el protocolo o el esquema de herramientas, actualiza y prueba ambos repositorios.
 
 ## Contribuciones

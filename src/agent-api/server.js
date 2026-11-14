@@ -90,7 +90,11 @@ export class AgentApiServer {
       }
       if (request.method === 'POST' && url.pathname === '/v1/spaces') {
         const body = await readJson(request);
-        const space = await this.manager.createSpace({ name: body.name || 'Agent space', activate: true });
+        const space = await this.manager.createSpace({
+          name: body.name || 'Agent space',
+          activate: true,
+          ignoreCertErrors: Boolean(body.ignoreCertErrors)
+        });
         const target = body.url ? normalizeNavigationTarget(body.url) : 'about:blank';
         const tab = await this.manager.createTab(space.id, target, { activate: true });
         return sendJson(response, 201, { space, tab });
@@ -116,7 +120,7 @@ export class AgentApiServer {
         return sendJson(response, 201, { tab });
       }
 
-      const tabMatch = url.pathname.match(/^\/v1\/spaces\/([^/]+)\/tabs\/([^/]+)(?:\/(snapshot|navigate|actions|screenshot|html|network|console))?$/);
+      const tabMatch = url.pathname.match(/^\/v1\/spaces\/([^/]+)\/tabs\/([^/]+)(?:\/(snapshot|extract|navigate|actions|screenshot|html|network|console))?$/);
       if (tabMatch) {
         const spaceId = decodeURIComponent(tabMatch[1]);
         const tabId = decodeURIComponent(tabMatch[2]);
@@ -126,14 +130,40 @@ export class AgentApiServer {
           return sendJson(response, 200, { closed: true });
         }
         if (request.method === 'GET' && operation === 'snapshot') {
-          return sendJson(response, 200, await this.manager.snapshot(spaceId, tabId));
+          const options = {
+            selector: url.searchParams.get('selector') || undefined,
+            role: url.searchParams.get('role') || undefined,
+            offset: url.searchParams.has('offset') ? Number(url.searchParams.get('offset')) : undefined,
+            limit: url.searchParams.has('limit') ? Number(url.searchParams.get('limit')) : undefined,
+            includeTables: url.searchParams.has('includeTables') ? url.searchParams.get('includeTables') !== 'false' : undefined,
+            maxTableRows: url.searchParams.has('maxTableRows') ? Number(url.searchParams.get('maxTableRows')) : undefined,
+            tableRowOffset: url.searchParams.has('tableRowOffset') ? Number(url.searchParams.get('tableRowOffset')) : undefined
+          };
+          return sendJson(response, 200, await this.manager.snapshot(spaceId, tabId, options));
+        }
+        if ((request.method === 'POST' || request.method === 'GET') && operation === 'extract') {
+          const body = request.method === 'POST' ? await readJson(request) : {};
+          const options = {
+            selector: body.selector ?? url.searchParams.get('selector') ?? '',
+            limit: body.limit ?? (url.searchParams.has('limit') ? Number(url.searchParams.get('limit')) : undefined),
+            offset: body.offset ?? (url.searchParams.has('offset') ? Number(url.searchParams.get('offset')) : undefined),
+            includeAttributes: body.includeAttributes ?? (url.searchParams.get('includeAttributes') === 'true')
+          };
+          return sendJson(response, 200, await this.manager.extract(spaceId, tabId, options));
         }
         if (request.method === 'GET' && operation === 'screenshot') {
           return sendJson(response, 200, await this.manager.screenshot(spaceId, tabId));
         }
         if (request.method === 'GET' && operation === 'html') {
           const ref = url.searchParams.get('ref');
-          return sendJson(response, 200, await this.manager.getHtml(spaceId, tabId, ref));
+          const options = {
+            ref,
+            selector: url.searchParams.get('selector') || undefined,
+            maxChars: url.searchParams.has('maxChars') ? Number(url.searchParams.get('maxChars')) : undefined,
+            offset: url.searchParams.has('offset') ? Number(url.searchParams.get('offset')) : undefined,
+            textOnly: url.searchParams.has('textOnly') ? url.searchParams.get('textOnly') === 'true' : undefined
+          };
+          return sendJson(response, 200, await this.manager.getHtml(spaceId, tabId, ref, options));
         }
         if (request.method === 'GET' && operation === 'network') {
           const limit = url.searchParams.get('limit');

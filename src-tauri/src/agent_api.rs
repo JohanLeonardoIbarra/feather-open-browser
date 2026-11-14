@@ -11,7 +11,7 @@ use tiny_http::{Header, Method, Response, Server, StatusCode};
 use uuid::Uuid;
 
 use crate::space_manager::{SpaceManager, SpaceManagerHandle};
-use crate::state::ApiInfo;
+use crate::state::{ApiInfo, ExtractOptions, GetHtmlOptions, SnapshotOptions};
 
 pub struct AgentApiServer {
   pub host: String,
@@ -108,23 +108,29 @@ impl AgentApiServer {
             let body = read_json_body(&mut request);
             let name = body.get("name").and_then(|v| v.as_str()).map(|s| s.to_string());
             let target_url = body.get("url").and_then(|v| v.as_str()).map(|s| s.to_string());
+            let ignore_cert_errors = body
+              .get("ignoreCertErrors")
+              .and_then(|v| v.as_bool())
+              .unwrap_or(false);
 
             let result = handle.block_on(async {
-              let space = SpaceManager::create_space(&mgr, name).await?;
-              if let Some(target) = target_url {
-                if let Some(tab_id) = &space.active_tab_id {
-                  let _ = SpaceManager::navigate(&mgr, &space.id, tab_id, &target).await;
-                }
-              }
-              let m = mgr.lock().await;
-              let updated_space = m.spaces.get(&space.id).map(|s| s.to_state());
-              let tab = updated_space.as_ref().and_then(|s| s.tabs.first().cloned());
-              Ok::<(Value, Value), String>((json!(updated_space), json!(tab)))
+              let (space, tab, nav) =
+                SpaceManager::create_space_with_options(&mgr, name, target_url, ignore_cert_errors)
+                  .await?;
+              let snapshot = SpaceManager::snapshot(&mgr, &space.id, &tab.id)
+                .await
+                .ok();
+              Ok::<Value, String>(json!({
+                "space": space,
+                "tab": tab,
+                "navigation": nav,
+                "snapshot": snapshot
+              }))
             });
 
             match result {
-              Ok((space, tab)) => {
-                let _ = request.respond(json_response(201, &json!({ "space": space, "tab": tab })));
+              Ok(payload) => {
+                let _ = request.respond(json_response(201, &payload));
               }
               Err(err) => {
                 let _ = request.respond(json_response(400, &json!({ "error": err })));
@@ -133,21 +139,20 @@ impl AgentApiServer {
           }
 
           _ => {
-            // Manejar rutas con parámetros: /v1/spaces/:id, /v1/spaces/:id/tabs, /v1/spaces/:id/tabs/:tabId/...
             let segments: Vec<&str> = path.trim_matches('/').split('/').collect();
             if segments.len() == 3 && segments[0] == "v1" && segments[1] == "spaces" && request.method() == &Method::Delete {
-              let space_id = segments[2];
-              let res = handle.block_on(SpaceManager::close_space(&mgr, space_id));
+              let space_id = percent_decode(segments[2]);
+              let res = handle.block_on(SpaceManager::close_space(&mgr, &space_id));
               match res {
                 Ok(_) => { let _ = request.respond(json_response(200, &json!({ "closed": true }))); }
                 Err(err) => { let _ = request.respond(json_response(404, &json!({ "error": err }))); }
               }
             } else if segments.len() == 4 && segments[0] == "v1" && segments[1] == "spaces" && segments[3] == "tabs" {
-              let space_id = segments[2];
+              let space_id = percent_decode(segments[2]);
               if request.method() == &Method::Get {
                 let tabs = handle.block_on(async {
                   let m = mgr.lock().await;
-                  m.spaces.get(space_id).map(|s| s.to_state().tabs)
+                  m.spaces.get(&space_id).map(|s| s.to_state().tabs)
                 });
                 match tabs {
                   Some(t) => { let _ = request.respond(json_response(200, &json!({ "tabs": t }))); }
@@ -156,21 +161,29 @@ impl AgentApiServer {
               } else if request.method() == &Method::Post {
                 let body = read_json_body(&mut request);
                 let target = body.get("url").and_then(|v| v.as_str()).map(|s| s.to_string());
-                let res = handle.block_on(SpaceManager::create_tab(&mgr, space_id, target, true));
+                let res = handle.block_on(async {
+                  let (tab, nav) = SpaceManager::create_tab_with_status(&mgr, &space_id, target, true).await?;
+                  let snapshot = SpaceManager::snapshot(&mgr, &space_id, &tab.id).await.ok();
+                  Ok::<Value, String>(json!({
+                    "tab": tab,
+                    "navigation": nav,
+                    "snapshot": snapshot
+                  }))
+                });
                 match res {
-                  Ok(tab) => { let _ = request.respond(json_response(201, &json!({ "tab": tab }))); }
+                  Ok(payload) => { let _ = request.respond(json_response(201, &payload)); }
                   Err(err) => { let _ = request.respond(json_response(400, &json!({ "error": err }))); }
                 }
               } else {
                 let _ = request.respond(json_response(404, &json!({ "error": "Ruta no encontrada." })));
               }
             } else if segments.len() >= 5 && segments[0] == "v1" && segments[1] == "spaces" && segments[3] == "tabs" {
-              let space_id = segments[2];
-              let tab_id = segments[4];
+              let space_id = percent_decode(segments[2]);
+              let tab_id = percent_decode(segments[4]);
               let operation = segments.get(5).copied().unwrap_or("");
 
               if operation.is_empty() && request.method() == &Method::Delete {
-                let res = handle.block_on(SpaceManager::close_tab(&mgr, space_id, tab_id));
+                let res = handle.block_on(SpaceManager::close_tab(&mgr, &space_id, &tab_id));
                 match res {
                   Ok(_) => { let _ = request.respond(json_response(200, &json!({ "closed": true }))); }
                   Err(err) => { let _ = request.respond(json_response(404, &json!({ "error": err }))); }
@@ -178,42 +191,120 @@ impl AgentApiServer {
               } else if operation == "navigate" && request.method() == &Method::Post {
                 let body = read_json_body(&mut request);
                 let target = body.get("url").and_then(|v| v.as_str()).unwrap_or("");
-                let res = handle.block_on(SpaceManager::navigate(&mgr, space_id, tab_id, target));
+                let res = handle.block_on(async {
+                  let (tab, nav) = SpaceManager::navigate_with_status(&mgr, &space_id, &tab_id, target).await?;
+                  let snapshot = SpaceManager::snapshot(&mgr, &space_id, &tab_id).await.ok();
+                  Ok::<Value, String>(json!({
+                    "tab": tab,
+                    "ok": nav.ok,
+                    "errorCode": nav.error_code,
+                    "httpStatus": nav.http_status,
+                    "navigation": nav,
+                    "snapshot": snapshot
+                  }))
+                });
                 match res {
-                  Ok(tab) => { let _ = request.respond(json_response(200, &json!({ "tab": tab }))); }
+                  Ok(payload) => { let _ = request.respond(json_response(200, &payload)); }
                   Err(err) => { let _ = request.respond(json_response(400, &json!({ "error": err }))); }
                 }
               } else if operation == "snapshot" && request.method() == &Method::Get {
-                let res = handle.block_on(SpaceManager::snapshot(&mgr, space_id, tab_id));
+                let options = SnapshotOptions {
+                  selector: parse_query_param(&url, "selector"),
+                  role: parse_query_param(&url, "role"),
+                  offset: parse_query_param(&url, "offset").and_then(|v| v.parse().ok()),
+                  limit: parse_query_param(&url, "limit").and_then(|v| v.parse().ok()),
+                  include_tables: parse_query_param(&url, "includeTables").map(|v| v != "false" && v != "0"),
+                  max_table_rows: parse_query_param(&url, "maxTableRows").and_then(|v| v.parse().ok()),
+                  table_row_offset: parse_query_param(&url, "tableRowOffset").and_then(|v| v.parse().ok()),
+                };
+                let res = handle.block_on(SpaceManager::snapshot_with_options(&mgr, &space_id, &tab_id, options));
                 match res {
                   Ok(snap) => { let _ = request.respond(json_response(200, &snap)); }
+                  Err(err) => { let _ = request.respond(json_response(400, &json!({ "error": err }))); }
+                }
+              } else if operation == "extract" && (request.method() == &Method::Get || request.method() == &Method::Post) {
+                let body = if request.method() == &Method::Post {
+                  read_json_body(&mut request)
+                } else {
+                  json!({})
+                };
+                let selector = body
+                  .get("selector")
+                  .and_then(|v| v.as_str())
+                  .map(|s| s.to_string())
+                  .or_else(|| parse_query_param(&url, "selector"))
+                  .unwrap_or_default();
+                let limit = body
+                  .get("limit")
+                  .and_then(|v| v.as_u64())
+                  .map(|n| n as usize)
+                  .or_else(|| parse_query_param(&url, "limit").and_then(|v| v.parse().ok()));
+                let offset = body
+                  .get("offset")
+                  .and_then(|v| v.as_u64())
+                  .map(|n| n as usize)
+                  .or_else(|| parse_query_param(&url, "offset").and_then(|v| v.parse().ok()));
+                let include_attributes = body
+                  .get("includeAttributes")
+                  .and_then(|v| v.as_bool())
+                  .or_else(|| parse_query_param(&url, "includeAttributes").map(|v| v == "true" || v == "1"));
+
+                let res = handle.block_on(SpaceManager::extract(
+                  &mgr,
+                  &space_id,
+                  &tab_id,
+                  ExtractOptions {
+                    selector,
+                    limit,
+                    offset,
+                    include_attributes,
+                  },
+                ));
+                match res {
+                  Ok(val) => { let _ = request.respond(json_response(200, &val)); }
                   Err(err) => { let _ = request.respond(json_response(400, &json!({ "error": err }))); }
                 }
               } else if operation == "actions" && request.method() == &Method::Post {
                 let body = read_json_body(&mut request);
                 let actions = body.get("actions").cloned().unwrap_or(json!([]));
-                let res = handle.block_on(SpaceManager::run_actions(&mgr, space_id, tab_id, actions));
+                let res = handle.block_on(SpaceManager::run_actions(&mgr, &space_id, &tab_id, actions));
                 match res {
                   Ok(val) => { let _ = request.respond(json_response(200, &val)); }
                   Err(err) => { let _ = request.respond(json_response(400, &json!({ "error": err }))); }
                 }
               } else if operation == "html" && request.method() == &Method::Get {
-                let ref_param = parse_query_param(&url, "ref");
-                let res = handle.block_on(SpaceManager::get_html(&mgr, space_id, tab_id, ref_param));
+                let options = GetHtmlOptions {
+                  ref_id: parse_query_param(&url, "ref"),
+                  selector: parse_query_param(&url, "selector"),
+                  max_chars: parse_query_param(&url, "maxChars").and_then(|v| v.parse().ok()),
+                  offset: parse_query_param(&url, "offset").and_then(|v| v.parse().ok()),
+                  text_only: parse_query_param(&url, "textOnly").map(|v| v == "true" || v == "1"),
+                };
+                let res = handle.block_on(SpaceManager::get_html(&mgr, &space_id, &tab_id, options));
                 match res {
                   Ok(val) => { let _ = request.respond(json_response(200, &val)); }
                   Err(err) => { let _ = request.respond(json_response(400, &json!({ "error": err }))); }
                 }
               } else if operation == "screenshot" && request.method() == &Method::Get {
-                let res = handle.block_on(SpaceManager::screenshot(&mgr, space_id, tab_id));
+                let res = handle.block_on(SpaceManager::screenshot(&mgr, &space_id, &tab_id));
                 match res {
                   Ok(val) => { let _ = request.respond(json_response(200, &val)); }
                   Err(err) => { let _ = request.respond(json_response(400, &json!({ "error": err }))); }
                 }
               } else if operation == "console" && request.method() == &Method::Get {
-                let _ = request.respond(json_response(200, &json!({ "logs": [] })));
+                let limit = parse_query_param(&url, "limit").and_then(|v| v.parse().ok());
+                let res = handle.block_on(SpaceManager::get_console_logs(&mgr, &space_id, &tab_id, limit));
+                match res {
+                  Ok(val) => { let _ = request.respond(json_response(200, &val)); }
+                  Err(err) => { let _ = request.respond(json_response(400, &json!({ "error": err }))); }
+                }
               } else if operation == "network" && request.method() == &Method::Get {
-                let _ = request.respond(json_response(200, &json!({ "requests": [] })));
+                let limit = parse_query_param(&url, "limit").and_then(|v| v.parse().ok());
+                let res = handle.block_on(SpaceManager::get_network_requests(&mgr, &space_id, &tab_id, limit));
+                match res {
+                  Ok(val) => { let _ = request.respond(json_response(200, &val)); }
+                  Err(err) => { let _ = request.respond(json_response(400, &json!({ "error": err }))); }
+                }
               } else {
                 let _ = request.respond(json_response(404, &json!({ "error": "Ruta no encontrada." })));
               }
@@ -328,13 +419,38 @@ fn json_response(status: u16, value: &Value) -> Response<std::io::Cursor<Vec<u8>
   )
 }
 
+fn percent_decode(input: &str) -> String {
+  let bytes = input.as_bytes();
+  let mut out = Vec::with_capacity(bytes.len());
+  let mut i = 0;
+  while i < bytes.len() {
+    if bytes[i] == b'%' && i + 2 < bytes.len() {
+      if let (Some(h), Some(l)) = (
+        (bytes[i + 1] as char).to_digit(16),
+        (bytes[i + 2] as char).to_digit(16),
+      ) {
+        out.push(((h << 4) | l) as u8);
+        i += 3;
+        continue;
+      }
+    } else if bytes[i] == b'+' {
+      out.push(b' ');
+      i += 1;
+      continue;
+    }
+    out.push(bytes[i]);
+    i += 1;
+  }
+  String::from_utf8_lossy(&out).into_owned()
+}
+
 fn parse_query_param(url: &str, param: &str) -> Option<String> {
   let query = url.split('?').nth(1)?;
   for pair in query.split('&') {
-    let mut parts = pair.split('=');
+    let mut parts = pair.splitn(2, '=');
     if let (Some(k), Some(v)) = (parts.next(), parts.next()) {
-      if k == param {
-        return Some(v.to_string());
+      if percent_decode(k) == param {
+        return Some(percent_decode(v));
       }
     }
   }

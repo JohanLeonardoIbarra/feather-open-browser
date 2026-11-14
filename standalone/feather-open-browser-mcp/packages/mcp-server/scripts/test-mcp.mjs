@@ -22,9 +22,13 @@ try {
     'browser_spaces',
     'browser_create_space',
     'browser_snapshot',
+    'browser_extract',
+    'browser_wait',
     'browser_run_actions',
     'browser_screenshot',
-    'browser_get_html'
+    'browser_get_html',
+    'browser_network_requests',
+    'browser_console_logs'
   ]) {
     assert(names.has(expected), `Missing MCP tool: ${expected}`);
   }

@@ -28,7 +28,12 @@ Los workspaces son:
 
 ## Configuración de agentes
 
-`mcp-config.example.json` muestra el formato común `mcpServers`. Cada cliente MCP puede tener su propia estructura; la configuración debe ejecutar Node con `packages/mcp-server/server.mjs` como argumento. Usa una ruta absoluta en la máquina donde corre el agente. En OpenCode también puede configurarse con `type: "local"`, `command: ["node", "/ruta/absoluta/packages/mcp-server/server.mjs"]` y `cwd` apuntando a la raíz del monorepo.
+`mcp-config.example.json` muestra el formato común `mcpServers`. Cada cliente MCP puede tener su propia estructura; la configuración debe ejecutar Node con `packages/mcp-server/server.mjs` como argumento. Usa una ruta absoluta correspondiente al sistema operativo donde corre el cliente del agente:
+
+- **Windows (Kiro CLI, Claude Desktop, Cursor, etc.)**: usa una ruta de Windows con letra de unidad, por ejemplo `"C:/Compilaciones/feather-open-browser-mcp/packages/mcp-server/server.mjs"`. No uses rutas de WSL (`/mnt/c/...`) si el cliente MCP ejecuta el proceso `node` nativo de Windows.
+- **Linux / macOS**: usa una ruta POSIX absoluta, por ejemplo `"/home/usuario/feather-open-browser-mcp/packages/mcp-server/server.mjs"`.
+
+En OpenCode también puede configurarse con `type: "local"`, `command: ["node", "/ruta/absoluta/packages/mcp-server/server.mjs"]` y `cwd` apuntando a la raíz del monorepo.
 
 El cliente MCP descubre automáticamente `agent-api.json` en la carpeta de configuración del usuario:
 

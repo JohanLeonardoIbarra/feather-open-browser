@@ -39,6 +39,17 @@ async function resolveConfigPath(preferredPath) {
   return candidates[0];
 }
 
+function buildQuery(params = {}) {
+  const search = new URLSearchParams();
+  for (const [key, val] of Object.entries(params)) {
+    if (val !== undefined && val !== null && val !== '') {
+      search.set(key, String(val));
+    }
+  }
+  const str = search.toString();
+  return str ? `?${str}` : '';
+}
+
 export class OpenBrowserClient {
   constructor(config) {
     this.baseUrl = `http://${config.host}:${config.port}`;
@@ -75,8 +86,11 @@ export class OpenBrowserClient {
     return (await this.request('/v1/spaces')).spaces;
   }
 
-  async createSpace({ name, url } = {}) {
-    return this.request('/v1/spaces', { method: 'POST', body: { name, url } });
+  async createSpace({ name, url, ignoreCertErrors } = {}) {
+    return this.request('/v1/spaces', {
+      method: 'POST',
+      body: { name, url, ...(ignoreCertErrors !== undefined ? { ignoreCertErrors } : {}) }
+    });
   }
 
   async closeSpace(spaceId) {
@@ -105,26 +119,37 @@ export class OpenBrowserClient {
     });
   }
 
-  async snapshot(spaceId, tabId) {
-    return this.request(`/v1/spaces/${encodeURIComponent(spaceId)}/tabs/${encodeURIComponent(tabId)}/snapshot`);
+  async snapshot(spaceId, tabId, options = {}) {
+    const query = buildQuery(options || {});
+    return this.request(`/v1/spaces/${encodeURIComponent(spaceId)}/tabs/${encodeURIComponent(tabId)}/snapshot${query}`);
+  }
+
+  async extract(spaceId, tabId, options = {}) {
+    return this.request(`/v1/spaces/${encodeURIComponent(spaceId)}/tabs/${encodeURIComponent(tabId)}/extract`, {
+      method: 'POST',
+      body: options || {}
+    });
   }
 
   async screenshot(spaceId, tabId) {
     return this.request(`/v1/spaces/${encodeURIComponent(spaceId)}/tabs/${encodeURIComponent(tabId)}/screenshot`);
   }
 
-  async html(spaceId, tabId, ref = null) {
-    const query = ref ? `?ref=${encodeURIComponent(ref)}` : '';
+  async html(spaceId, tabId, optionsOrRef = null) {
+    const opts = typeof optionsOrRef === 'string'
+      ? { ref: optionsOrRef }
+      : (optionsOrRef && typeof optionsOrRef === 'object' ? optionsOrRef : {});
+    const query = buildQuery(opts);
     return this.request(`/v1/spaces/${encodeURIComponent(spaceId)}/tabs/${encodeURIComponent(tabId)}/html${query}`);
   }
 
   async network(spaceId, tabId, limit = null) {
-    const query = limit ? `?limit=${encodeURIComponent(limit)}` : '';
+    const query = buildQuery({ limit });
     return this.request(`/v1/spaces/${encodeURIComponent(spaceId)}/tabs/${encodeURIComponent(tabId)}/network${query}`);
   }
 
   async consoleLogs(spaceId, tabId, limit = null) {
-    const query = limit ? `?limit=${encodeURIComponent(limit)}` : '';
+    const query = buildQuery({ limit });
     return this.request(`/v1/spaces/${encodeURIComponent(spaceId)}/tabs/${encodeURIComponent(tabId)}/console${query}`);
   }
 

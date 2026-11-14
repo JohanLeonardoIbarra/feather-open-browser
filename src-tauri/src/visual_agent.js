@@ -5,131 +5,154 @@ window.__open_browser_action_status = { done: false, ok: false, error: null };
     const fast = __FAST_BOOL__;
 
     const STYLE_ID = '__open_browser_visual_styles';
-    if (!document.getElementById(STYLE_ID)) {
-      const style = document.createElement('style');
-      style.id = STYLE_ID;
-      style.textContent = `
-        #__open_browser_cursor {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 28px;
-          height: 28px;
-          pointer-events: none !important;
-          z-index: 2147483647 !important;
-          opacity: 0;
-          transform: translate(-100px, -100px);
-          will-change: transform, opacity;
-          transition: opacity 0.35s ease;
-        }
-        #__open_browser_cursor.ob-visible {
-          opacity: 1 !important;
-        }
-        .ob-cursor-inner {
-          position: relative;
-          width: 100%;
-          height: 100%;
-          transform-origin: 3px 2px;
-          will-change: transform;
-        }
-        .ob-cursor-svg {
-          width: 24px;
-          height: 24px;
-          filter: drop-shadow(0 2px 7px rgba(0, 0, 0, 0.65)) drop-shadow(0 0 10px rgba(0, 240, 255, 0.45));
-        }
-        .ob-cursor-badge {
-          position: absolute;
-          left: 22px;
-          top: 13px;
-          background: rgba(13, 17, 23, 0.94);
-          backdrop-filter: blur(8px);
-          border: 1px solid #00f0ff;
-          color: #e6edf3;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-          font-size: 11px;
-          font-weight: 600;
-          padding: 3px 9px;
-          border-radius: 6px;
-          white-space: nowrap;
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 240, 255, 0.25);
-          pointer-events: none !important;
-          line-height: 1.3;
-          opacity: 0;
-          transform: translateY(4px);
-          transition: opacity 0.16s ease, transform 0.16s cubic-bezier(0.18, 0.89, 0.32, 1.2);
-          display: none;
-        }
-        .ob-cursor-badge.ob-badge-show {
-          display: block !important;
-          opacity: 1 !important;
-          transform: translateY(0) !important;
-        }
-        .ob-click-ripple {
-          position: fixed;
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          pointer-events: none !important;
-          z-index: 2147483646 !important;
-          border: 2px solid #00f0ff;
-          background: radial-gradient(circle, rgba(0, 240, 255, 0.35) 0%, rgba(0, 240, 255, 0) 70%);
-          box-shadow: 0 0 12px #00f0ff, inset 0 0 8px rgba(0, 240, 255, 0.5);
-          transform: translate(-50%, -50%) scale(0.2);
-          opacity: 1;
-          transition: transform 0.38s cubic-bezier(0.1, 0.82, 0.25, 1), opacity 0.38s ease-out;
-          will-change: transform, opacity;
-        }
-        .ob-click-ripple.ob-ripple-expand {
-          transform: translate(-50%, -50%) scale(3.2) !important;
-          opacity: 0 !important;
-        }
-        .ob-cursor-trail {
-          position: fixed;
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
-          pointer-events: none !important;
-          z-index: 2147483645 !important;
-          background: #00f0ff;
-          box-shadow: 0 0 9px rgba(0, 240, 255, 0.85);
-          transform: translate(-50%, -50%) scale(1);
-          opacity: 0.7;
-          transition: transform 0.3s ease-out, opacity 0.3s ease-out;
-          will-change: transform, opacity;
-        }
-        .ob-cursor-trail.ob-trail-fade {
-          transform: translate(-50%, -50%) scale(0.15) !important;
-          opacity: 0 !important;
-        }
-        .ob-element-highlight {
-          outline: 2px solid #00f0ff !important;
-          outline-offset: 3px !important;
-          box-shadow: 0 0 14px rgba(0, 240, 255, 0.65) !important;
-          transition: outline 0.15s ease, box-shadow 0.15s ease !important;
-        }
-      `;
-      (document.head || document.documentElement).appendChild(style);
-    }
+    try {
+      if (!document.getElementById(STYLE_ID)) {
+        const style = document.createElement('style');
+        style.id = STYLE_ID;
+        style.textContent = `
+          #__open_browser_cursor {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 28px;
+            height: 28px;
+            pointer-events: none !important;
+            z-index: 2147483647 !important;
+            opacity: 0;
+            transform: translate(-100px, -100px);
+            will-change: transform, opacity;
+            transition: opacity 0.35s ease;
+          }
+          #__open_browser_cursor.ob-visible {
+            opacity: 1 !important;
+          }
+          .ob-cursor-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform-origin: 3px 2px;
+            will-change: transform;
+          }
+          .ob-cursor-svg {
+            width: 24px;
+            height: 24px;
+            filter: drop-shadow(0 2px 7px rgba(0, 0, 0, 0.65)) drop-shadow(0 0 10px rgba(0, 240, 255, 0.45));
+          }
+          .ob-cursor-badge {
+            position: absolute;
+            left: 22px;
+            top: 13px;
+            background: rgba(13, 17, 23, 0.94);
+            backdrop-filter: blur(8px);
+            border: 1px solid #00f0ff;
+            color: #e6edf3;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 9px;
+            border-radius: 6px;
+            white-space: nowrap;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 240, 255, 0.25);
+            pointer-events: none !important;
+            line-height: 1.3;
+            opacity: 0;
+            transform: translateY(4px);
+            transition: opacity 0.16s ease, transform 0.16s cubic-bezier(0.18, 0.89, 0.32, 1.2);
+            display: none;
+          }
+          .ob-cursor-badge.ob-badge-show {
+            display: block !important;
+            opacity: 1 !important;
+            transform: translateY(0) !important;
+          }
+          .ob-click-ripple {
+            position: fixed;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            pointer-events: none !important;
+            z-index: 2147483646 !important;
+            border: 2px solid #00f0ff;
+            background: radial-gradient(circle, rgba(0, 240, 255, 0.35) 0%, rgba(0, 240, 255, 0) 70%);
+            box-shadow: 0 0 12px #00f0ff, inset 0 0 8px rgba(0, 240, 255, 0.5);
+            transform: translate(-50%, -50%) scale(0.2);
+            opacity: 1;
+            transition: transform 0.38s cubic-bezier(0.1, 0.82, 0.25, 1), opacity 0.38s ease-out;
+            will-change: transform, opacity;
+          }
+          .ob-click-ripple.ob-ripple-expand {
+            transform: translate(-50%, -50%) scale(3.2) !important;
+            opacity: 0 !important;
+          }
+          .ob-cursor-trail {
+            position: fixed;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            pointer-events: none !important;
+            z-index: 2147483645 !important;
+            background: #00f0ff;
+            box-shadow: 0 0 9px rgba(0, 240, 255, 0.85);
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 0.7;
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+            will-change: transform, opacity;
+          }
+          .ob-cursor-trail.ob-trail-fade {
+            transform: translate(-50%, -50%) scale(0.15) !important;
+            opacity: 0 !important;
+          }
+          .ob-element-highlight {
+            outline: 2px solid #00f0ff !important;
+            outline-offset: 3px !important;
+            box-shadow: 0 0 14px rgba(0, 240, 255, 0.65) !important;
+            transition: outline 0.15s ease, box-shadow 0.15s ease !important;
+          }
+        `;
+        (document.head || document.documentElement)?.appendChild(style);
+      }
+    } catch (_) {}
 
     let cursor = document.getElementById('__open_browser_cursor');
     let inner = null;
     let badge = null;
 
-    if (!cursor) {
-      cursor = document.createElement('div');
-      cursor.id = '__open_browser_cursor';
-      cursor.innerHTML = `
-        <div class="ob-cursor-inner">
-          <svg class="ob-cursor-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3 2L3 18.5L7.2 14.3L11.5 22L13.8 20.7L9.5 13.2L15.5 13.2L3 2Z" fill="#00f0ff" stroke="#06121e" stroke-width="1.8" stroke-linejoin="round"/>
-          </svg>
-          <div id="__open_browser_cursor_badge" class="ob-cursor-badge"></div>
-        </div>
-      `;
-      (document.body || document.documentElement).appendChild(cursor);
-    }
-    inner = cursor.querySelector('.ob-cursor-inner');
-    badge = cursor.querySelector('#__open_browser_cursor_badge');
+    try {
+      if (!cursor) {
+        cursor = document.createElement('div');
+        cursor.id = '__open_browser_cursor';
+
+        const innerDiv = document.createElement('div');
+        innerDiv.className = 'ob-cursor-inner';
+
+        const svgNs = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(svgNs, 'svg');
+        svg.setAttribute('class', 'ob-cursor-svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('fill', 'none');
+
+        const path = document.createElementNS(svgNs, 'path');
+        path.setAttribute('d', 'M3 2L3 18.5L7.2 14.3L11.5 22L13.8 20.7L9.5 13.2L15.5 13.2L3 2Z');
+        path.setAttribute('fill', '#00f0ff');
+        path.setAttribute('stroke', '#06121e');
+        path.setAttribute('stroke-width', '1.8');
+        path.setAttribute('stroke-linejoin', 'round');
+
+        svg.appendChild(path);
+
+        const badgeDiv = document.createElement('div');
+        badgeDiv.id = '__open_browser_cursor_badge';
+        badgeDiv.className = 'ob-cursor-badge';
+
+        innerDiv.appendChild(svg);
+        innerDiv.appendChild(badgeDiv);
+        cursor.appendChild(innerDiv);
+
+        (document.body || document.documentElement)?.appendChild(cursor);
+      }
+      inner = cursor?.querySelector('.ob-cursor-inner') || null;
+      badge = cursor?.querySelector('#__open_browser_cursor_badge') || null;
+    } catch (_) {}
 
     const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -141,28 +164,32 @@ window.__open_browser_action_status = { done: false, ok: false, error: null };
 
     const triggerRipple = (x, y) => {
       if (fast) return;
-      const ripple = document.createElement('div');
-      ripple.className = 'ob-click-ripple';
-      ripple.style.left = x + 'px';
-      ripple.style.top = y + 'px';
-      (document.body || document.documentElement).appendChild(ripple);
-      requestAnimationFrame(() => {
-        ripple.classList.add('ob-ripple-expand');
-      });
-      setTimeout(() => ripple.remove(), 420);
+      try {
+        const ripple = document.createElement('div');
+        ripple.className = 'ob-click-ripple';
+        ripple.style.left = x + 'px';
+        ripple.style.top = y + 'px';
+        (document.body || document.documentElement)?.appendChild(ripple);
+        requestAnimationFrame(() => {
+          ripple.classList.add('ob-ripple-expand');
+        });
+        setTimeout(() => ripple.remove(), 420);
+      } catch (_) {}
     };
 
     const spawnTrail = (x, y) => {
       if (fast) return;
-      const trail = document.createElement('div');
-      trail.className = 'ob-cursor-trail';
-      trail.style.left = x + 'px';
-      trail.style.top = y + 'px';
-      (document.body || document.documentElement).appendChild(trail);
-      requestAnimationFrame(() => {
-        trail.classList.add('ob-trail-fade');
-      });
-      setTimeout(() => trail.remove(), 320);
+      try {
+        const trail = document.createElement('div');
+        trail.className = 'ob-cursor-trail';
+        trail.style.left = x + 'px';
+        trail.style.top = y + 'px';
+        (document.body || document.documentElement)?.appendChild(trail);
+        requestAnimationFrame(() => {
+          trail.classList.add('ob-trail-fade');
+        });
+        setTimeout(() => trail.remove(), 320);
+      } catch (_) {}
     };
 
     const showBadge = (text) => {
@@ -186,7 +213,7 @@ window.__open_browser_action_status = { done: false, ok: false, error: null };
 
     // Smooth Bezier curved flight with banking tilt and particle trail
     const moveCursorTo = async (targetX, targetY, badgeText) => {
-      if (fast) return;
+      if (fast || !cursor) return;
 
       clearTimeout(state.fadeTimer);
 
@@ -442,11 +469,11 @@ window.__open_browser_action_status = { done: false, ok: false, error: null };
     }
 
     if (action.type === 'press') {
-      const el = (action.ref ? window.__openBrowserAgentRefs?.get(action.ref) : null) || document.activeElement || document.body;
+      const el = (action.ref ? window.__openBrowserAgentRefs?.get(action.ref) : null) || document.activeElement || document.body || document.documentElement;
       if (!el) throw new Error('No hay elemento activo para presionar la tecla.');
 
       if (!fast) {
-        const rect = el.getBoundingClientRect();
+        const rect = el.getBoundingClientRect ? el.getBoundingClientRect() : { width: 0, height: 0 };
         if (rect.width > 0 && rect.height > 0) {
           const x = Math.max(4, Math.min(window.innerWidth - 8, rect.left + rect.width / 2));
           const y = Math.max(4, Math.min(window.innerHeight - 8, rect.top + rect.height / 2));
@@ -457,24 +484,76 @@ window.__open_browser_action_status = { done: false, ok: false, error: null };
       const key = action.key === 'Space' ? ' ' : (action.key || 'Enter');
       const init = {
         key,
-        code: key === 'Enter' ? 'Enter' : key,
-        keyCode: key === 'Enter' ? 13 : 0,
-        which: key === 'Enter' ? 13 : 0,
+        code: key === 'Enter' ? 'Enter' : (action.key || key),
+        keyCode: key === 'Enter' ? 13 : (key === 'Tab' ? 9 : 0),
+        which: key === 'Enter' ? 13 : (key === 'Tab' ? 9 : 0),
         bubbles: true,
         cancelable: true
       };
       el.dispatchEvent(new KeyboardEvent('keydown', init));
       el.dispatchEvent(new KeyboardEvent('keypress', init));
-      const form = el.form || el.closest('form');
-      if ((key === 'Enter' || action.key === 'Enter') && form && !(el instanceof HTMLTextAreaElement)) {
-        try { form.requestSubmit(); } catch { form.submit(); }
+
+      if (key === 'Tab') {
+        const focusable = Array.from(document.querySelectorAll(
+          'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )).filter((node) => {
+          const r = node.getBoundingClientRect();
+          const s = getComputedStyle(node);
+          return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden';
+        });
+        if (focusable.length > 0) {
+          const idx = focusable.indexOf(document.activeElement);
+          const next = focusable[(idx + 1) % focusable.length];
+          try { next.focus(); } catch (_) {}
+        }
+      } else if (key === 'Enter' || action.key === 'Enter' || action.key === 'Space') {
+        const tag = (el.tagName || '').toLowerCase();
+        const role = (el.getAttribute && el.getAttribute('role')) || '';
+        if (tag === 'button' || tag === 'a' || tag === 'summary' || role === 'button' || role === 'link' || (tag === 'input' && ['button', 'submit', 'checkbox', 'radio'].includes((el.type || '').toLowerCase()))) {
+          try { el.click(); } catch (_) {}
+        } else {
+          const form = el.form || (el.closest && el.closest('form'));
+          if ((key === 'Enter' || action.key === 'Enter') && form && !(el instanceof HTMLTextAreaElement)) {
+            try { form.requestSubmit(); } catch { try { form.submit(); } catch (_) {} }
+          }
+        }
       }
+
       el.dispatchEvent(new KeyboardEvent('keyup', init));
 
       if (!fast) await wait(100);
       hideBadge();
       scheduleFadeout();
 
+      window.__open_browser_action_status = { done: true, ok: true };
+      return;
+    }
+
+    if (action.type === 'proceed_unsafe') {
+      try {
+        if (window.certificateErrorPageController && typeof window.certificateErrorPageController.proceed === 'function') {
+          window.certificateErrorPageController.proceed();
+          window.__open_browser_action_status = { done: true, ok: true };
+          return;
+        }
+      } catch (_) {}
+
+      const detailsBtn = document.querySelector('#details-button, #advancedButton, button[id*="details"], button[id*="advanced"]');
+      if (detailsBtn) {
+        try { detailsBtn.click(); } catch (_) {}
+        await wait(80);
+      }
+
+      const proceedEl = document.querySelector('#proceed-link, #exceptionDialogButton, a[id*="proceed"], button[id*="proceed"]') ||
+        Array.from(document.querySelectorAll('a, button')).find((node) => {
+          const txt = (node.innerText || node.textContent || '').toLowerCase();
+          return txt.includes('proceed') || txt.includes('continuar') || txt.includes('avanzar') || txt.includes('unsafe') || txt.includes('no seguro');
+        });
+
+      if (!proceedEl) {
+        throw new Error('No se encontró la opción para continuar en la página de advertencia de certificado.');
+      }
+      try { proceedEl.click(); } catch (_) {}
       window.__open_browser_action_status = { done: true, ok: true };
       return;
     }

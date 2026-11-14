@@ -132,18 +132,37 @@ export function buildVisualActionScript(action, { fast = false, step = 1, total 
     if (!cursor) {
       cursor = document.createElement('div');
       cursor.id = '__open_browser_cursor';
-      cursor.innerHTML = \`
-        <div class="ob-cursor-inner">
-          <svg class="ob-cursor-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3 2L3 18.5L7.2 14.3L11.5 22L13.8 20.7L9.5 13.2L15.5 13.2L3 2Z" fill="#00f0ff" stroke="#06121e" stroke-width="1.8" stroke-linejoin="round"/>
-          </svg>
-          <div id="__open_browser_cursor_badge" class="ob-cursor-badge"></div>
-        </div>
-      \`;
-      (document.body || document.documentElement).appendChild(cursor);
+
+      const innerDiv = document.createElement('div');
+      innerDiv.className = 'ob-cursor-inner';
+
+      const svgNs = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(svgNs, 'svg');
+      svg.setAttribute('class', 'ob-cursor-svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('fill', 'none');
+
+      const path = document.createElementNS(svgNs, 'path');
+      path.setAttribute('d', 'M3 2L3 18.5L7.2 14.3L11.5 22L13.8 20.7L9.5 13.2L15.5 13.2L3 2Z');
+      path.setAttribute('fill', '#00f0ff');
+      path.setAttribute('stroke', '#06121e');
+      path.setAttribute('stroke-width', '1.8');
+      path.setAttribute('stroke-linejoin', 'round');
+
+      svg.appendChild(path);
+
+      const badgeDiv = document.createElement('div');
+      badgeDiv.id = '__open_browser_cursor_badge';
+      badgeDiv.className = 'ob-cursor-badge';
+
+      innerDiv.appendChild(svg);
+      innerDiv.appendChild(badgeDiv);
+      cursor.appendChild(innerDiv);
+
+      (document.body || document.documentElement)?.appendChild(cursor);
     }
-    inner = cursor.querySelector('.ob-cursor-inner');
-    badge = cursor.querySelector('#__open_browser_cursor_badge');
+    inner = cursor?.querySelector('.ob-cursor-inner') || null;
+    badge = cursor?.querySelector('#__open_browser_cursor_badge') || null;
 
     const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
