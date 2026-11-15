@@ -122,7 +122,7 @@ function render() {
     document.body.classList.remove('has-active-space');
   }
   if (tabsBar) {
-    tabsBar.style.visibility = hasActiveSpace ? 'visible' : 'hidden';
+    tabsBar.style.display = hasActiveSpace ? 'flex' : 'none';
   }
 
   renderSpaces();
@@ -313,7 +313,8 @@ function currentWindow() {
   const tauriWindow = window.__TAURI__?.window;
   return tauriWindow?.getCurrentWindow?.() ?? tauriWindow?.getCurrent?.();
 }
-if (/Mac|iPod|iPhone|iPad/.test(navigator.platform)) {
+const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+if (isMac) {
   document.body.classList.add('is-macos');
 }
 const winMinimize = document.querySelector('#win-minimize');
@@ -323,7 +324,22 @@ if (winMinimize) {
   winMinimize.addEventListener('click', () => { void currentWindow()?.minimize(); });
 }
 if (winMaximize) {
-  winMaximize.addEventListener('click', () => { void currentWindow()?.toggleMaximize(); });
+  winMaximize.addEventListener('click', async (event) => {
+    const win = currentWindow();
+    if (!win) return;
+    // En macOS, el botón verde entra a pantalla completa (estándar de macOS),
+    // o maximiza la ventana si se pulsa con la tecla Option (Alt), igual que las apps nativas.
+    if (isMac && !event.altKey) {
+      try {
+        const isFull = await win.isFullscreen();
+        await win.setFullscreen(!isFull);
+      } catch {
+        void win.toggleMaximize();
+      }
+    } else {
+      void win.toggleMaximize();
+    }
+  });
 }
 if (winClose) {
   winClose.addEventListener('click', () => { void currentWindow()?.close(); });

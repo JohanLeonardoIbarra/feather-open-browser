@@ -59,6 +59,14 @@ pub fn run() {
       }
 
       if let Some(main_window) = app.get_window("main") {
+        #[cfg(target_os = "macos")]
+        {
+          if let Ok(menu) = tauri::menu::Menu::default(app.handle()) {
+            let _ = app.set_menu(menu);
+          }
+          let _ = main_window.set_decorations(true);
+        }
+
         let mgr_for_resize = space_manager.clone();
         main_window.on_window_event(move |event| {
           if let tauri::WindowEvent::Resized(_) = event {

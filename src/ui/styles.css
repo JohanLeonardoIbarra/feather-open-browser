@@ -211,12 +211,18 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
   box-shadow: var(--glow-soft, 0 0 8px rgba(255, 255, 255, 0.3));
 }
 
+/* La barra de pestañas solo es visible cuando hay un Space activo.
+   Por defecto permanece oculta (display: none) para evitar flashes al redimensionar/maximizar */
 .tabs-row {
+  display: none;
   height: 36px;
-  display: flex;
   align-items: center;
   gap: 12px;
   padding: 0 16px;
+}
+
+body.has-active-space .tabs-row {
+  display: flex;
 }
 
 .tabs {
@@ -350,34 +356,24 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
   color: var(--state-working, #f87171);
 }
 
+.win-icon-mac { display: none; }
+.win-icon-default { display: inline-block; }
+
 .window-button svg { width: 14px; height: 14px; stroke-width: 1.5; }
 
-/* Variante macOS: traffic lights redondos a la izquierda, solo visibles en mac */
+/* En macOS: la barra de menús del sistema (Apple Menu Bar) maneja el nombre de la app y las opciones del sistema.
+   Ocultamos los botones custom y el texto del nombre para mantener el diseño minimalista de la pluma. */
+body.is-macos .brand span {
+  display: none;
+}
+
 body.is-macos .window-controls {
-  order: -1;
-  gap: 7px;
-  margin-right: 4px;
+  display: none !important;
 }
 
-body.is-macos .window-button {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.25);
-  color: transparent;
-  transition: filter .15s;
+body.is-macos .masthead {
+  padding-left: 16px;
 }
-
-body.is-macos .window-button:hover {
-  background: inherit;
-  color: transparent;
-  filter: brightness(1.15);
-}
-
-body.is-macos .window-button svg { display: none; }
-body.is-macos #win-close { background: #ff5f57; order: 0; }
-body.is-macos #win-minimize { background: #febc2e; order: 1; }
-body.is-macos #win-maximize { background: #28c840; order: 2; }
 
 /* Panel de ajustes: tarjeta squircle de doble hairline, como el icono */
 .settings-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; }
