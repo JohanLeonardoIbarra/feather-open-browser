@@ -1,8 +1,8 @@
 :root {
   color-scheme: dark;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: #0d1117;
-  color: #c9d1d9;
+  font-family: var(--font-ui, "Public Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  background: var(--ground-black, #000);
+  color: var(--text, rgba(255, 255, 255, 0.78));
 }
 
 body {
@@ -11,9 +11,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(ellipse at center, #161b22 0%, #0d1117 100%);
+  background:
+    radial-gradient(ellipse at center, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 55%),
+    var(--ground-icon, linear-gradient(135deg, #111318 0%, #060709 55%, #000 100%));
   user-select: none;
 }
+
+::selection { background: rgba(255, 255, 255, 0.18); color: var(--text-hi, #f8fafc); }
 
 .newtab {
   text-align: center;
@@ -21,29 +25,42 @@ body {
 }
 
 .card {
+  position: relative;
   max-width: 400px;
-  padding: 32px 24px;
-  border-radius: 12px;
-  background: rgba(22, 27, 34, 0.8);
-  border: 1px solid #30363d;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  padding: 40px 32px;
+  border-radius: var(--radius-squircle, 28px);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--line-strong, rgba(255, 255, 255, 0.26));
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1px solid var(--line-soft, rgba(255, 255, 255, 0.08));
+  border-radius: calc(var(--radius-squircle, 28px) - 4px);
+  pointer-events: none;
 }
 
 .logo {
   display: inline-flex;
   margin-bottom: 16px;
+  color: var(--text-hi, #f8fafc);
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
 }
 
 h1 {
   margin: 0 0 8px 0;
   font-size: 18px;
   font-weight: 700;
-  color: #f0f6fc;
+  color: var(--text-hi, #f8fafc);
 }
 
 .description {
   margin: 0;
   font-size: 12px;
   line-height: 1.5;
-  color: #8b949e;
+  color: var(--text-lo, rgba(255, 255, 255, 0.55));
 }

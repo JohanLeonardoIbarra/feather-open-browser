@@ -1,5 +1,6 @@
 pub mod agent_api;
 pub mod commands;
+pub mod mcp;
 pub mod space_manager;
 pub mod state;
 pub mod visual_agent;
@@ -37,6 +38,7 @@ pub fn run() {
       commands::activate_space,
       commands::close_space,
       commands::get_api_info,
+      commands::get_skill_text,
     ])
     .setup(|app| {
       let handle = app.handle().clone();

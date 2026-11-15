@@ -1,14 +1,13 @@
 # Contribuir a Feather Open Browser
 
-Esta guía contiene los detalles técnicos del proyecto principal: la aplicación de escritorio Feather Open Browser y su integración con agentes. El paquete MCP independiente se mantiene también en [feather-open-browser-mcp](https://github.com/JohanLeonardoIbarra/feather-open-browser-mcp).
+Esta guía contiene los detalles técnicos del proyecto principal: la aplicación de escritorio Feather Open Browser y su integración con agentes. El MCP está integrado en la propia aplicación; ya no existe un paquete independiente.
 
 ## Estructura
 
-- `src-tauri/`: aplicación nativa Tauri v2, API local autenticada y automatización del webview.
-- `src/ui/`: interfaz de usuario del navegador.
-- `src/agent-api/`: cliente y servidor MCP de Node.js usados desde este repositorio.
-- `skills/open-browser/SKILL.md`: Skill de agente incluida en el proyecto.
-- `standalone/feather-open-browser-mcp/`: copia de trabajo del paquete MCP independiente; sincronizarla al cambiar el cliente, las herramientas o la Skill.
+- `src-tauri/`: aplicación nativa Tauri v2, API local autenticada, servidor MCP HTTP (`src/mcp.rs`) y automatización del webview.
+- `src/ui/`: interfaz de usuario del navegador, incluido el panel de configuración del agente (tuerca ⚙️).
+- `src/agent-api/`: cliente de Node.js (heredado, usado por las pruebas y la versión Electron).
+- `skills/open-browser/SKILL.md`: Skill de agente incluida en el proyecto (se expone en el panel de configuración).
 
 El binario de escritorio actual se construye con Tauri. Quedan archivos y dependencias heredados de Electron; no asumir que todos los scripts antiguos representan la implementación activa.
 
@@ -57,17 +56,33 @@ El cliente busca el archivo automáticamente en:
 - macOS: `~/Library/Application Support/feather-open-browser/agent-api.json`
 - Linux: `$XDG_CONFIG_HOME/feather-open-browser/agent-api.json` o `~/.config/feather-open-browser/agent-api.json`
 
-Para una ruta personalizada se puede definir `FEATHER_OPEN_BROWSER_CONFIG`. El MCP se ejecuta por stdio y consume la API del navegador; no abre un puerto de red propio. En el cliente de agente, configura la ruta local al script MCP correspondiente según el sistema operativo donde se ejecute el cliente:
+Para una ruta personalizada se puede definir `FEATHER_OPEN_BROWSER_CONFIG`.
 
-- **Windows**: usa una ruta de Windows como `"C:/ruta/a/feather-open-browser-mcp/packages/mcp-server/server.mjs"` (no uses rutas de WSL `/mnt/c/...` cuando el cliente corra en Windows nativo).
-- **Linux / macOS**: usa una ruta POSIX absoluta como `"/home/usuario/feather-open-browser-mcp/packages/mcp-server/server.mjs"`.
+### Servidor MCP integrado (HTTP)
 
-La configuración de Antigravity en `.agents/plugins/open-browser/mcp_config.json` puede contener rutas locales específicas de la máquina; actualízalas al cambiar de equipo.
+La aplicación expone el protocolo MCP (JSON-RPC 2.0, Streamable HTTP) en la misma API local:
 
-### Mantenimiento del paquete MCP
+- Endpoint: `POST http://127.0.0.1:<puerto>/mcp`
+- Autenticación: `Authorization: Bearer <token>` (el mismo token de `agent-api.json`)
+- Métodos soportados: `initialize`, `ping`, `tools/list`, `tools/call`; las notificaciones responden `202`.
+- Herramientas: las mismas 21 (`browser_spaces`, `browser_create_space`, …, `browser_console_logs`), definidas en `src-tauri/src/mcp.rs`.
 
-- El paquete MCP independiente contiene copias autónomas del cliente y servidor de este repositorio. Si cambia el protocolo o el esquema de herramientas, actualiza y prueba ambos repositorios.
+La tuerca ⚙️ de la barra superior de la app muestra el JSON de configuración listo para pegar en el cliente MCP:
+
+```json
+{
+  "mcpServers": {
+    "feather-open-browser": {
+      "type": "http",
+      "url": "http://127.0.0.1:<puerto>/mcp",
+      "headers": { "Authorization": "Bearer <token>" }
+    }
+  }
+}
+```
+
+El puerto y el token cambian en cada arranque de la app: copia siempre la configuración desde la tuerca con la app abierta. El texto de la Skill (`skills/open-browser/SKILL.md`) también se copia desde ese panel y se incluye embebido en el binario (`include_str!`), por lo que debe mantenerse actualizado en ese archivo.
 
 ## Contribuciones
 
-Antes de enviar una pull request, ejecuta `npm test` y `npm run check`. Para cambios en el API o MCP, añade o actualiza pruebas y mantén sincronizadas la Skill y la distribución independiente.
+Antes de enviar una pull request, ejecuta `npm test` y `npm run check`. Para cambios en el API, el MCP o las herramientas, añade o actualiza pruebas y mantén la Skill (`skills/open-browser/SKILL.md`) sincronizada con el comportamiento real.

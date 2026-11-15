@@ -72,6 +72,45 @@ impl AgentApiServer {
         let url = request.url().to_string();
         let path = url.split('?').next().unwrap_or("").to_string();
 
+        if path == "/mcp" {
+          if request.method() != &Method::Post {
+            let res = json_response(405, &json!({ "error": "Método no permitido. Usa POST con JSON-RPC." }));
+            let _ = request.respond(res);
+            continue;
+          }
+          let auth_header = request
+            .headers()
+            .iter()
+            .find(|h| h.field.as_str().as_str().eq_ignore_ascii_case("authorization"))
+            .map(|h| h.value.as_str().to_string())
+            .unwrap_or_default();
+          let supplied_token = auth_header.trim_start_matches("Bearer ").trim();
+          if supplied_token != token_clone {
+            let res = json_response(401, &json!({ "error": "Token ausente o incorrecto." }));
+            let _ = request.respond(res);
+            continue;
+          }
+          let body = read_json_body(&mut request);
+          let mgr = manager_clone.clone();
+          let (status, payload) = crate::mcp::dispatch(&mgr, body);
+          match payload {
+            Some(value) => {
+              let _ = request.respond(json_response(status, &value));
+            }
+            None => {
+              let empty = Response::new(
+                StatusCode(status),
+                Vec::new(),
+                std::io::Cursor::new(Vec::new()),
+                None,
+                None,
+              );
+              let _ = request.respond(empty);
+            }
+          }
+          continue;
+        }
+
         if request.method() == &Method::Get && path == "/health" {
           let res = json_response(200, &json!({ "ok": true, "service": "open-browser-agent-api-v1" }));
           let _ = request.respond(res);

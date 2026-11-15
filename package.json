@@ -1,6 +1,6 @@
 {
   "name": "feather-open-browser",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "private": true,
   "description": "A dedicated local browser for AI agents.",
   "author": "Feather Open Browser Team",
@@ -16,9 +16,8 @@
     "build:dmg": "tauri build --bundles dmg",
     "build:win": "tauri build",
     "smoke": "node scripts/smoke.mjs",
-    "mcp": "node scripts/mcp-server.mjs",
     "test": "node --test",
-    "check": "node --check src/main.js && node --check src/preload.cjs && node --check src/browser/navigation.js && node --check src/browser/space-manager.js && node --check src/browser/visual-agent.js && node --check src/agent-api/server.js && node --check src/agent-api/client.js && node --check src/agent-api/mcp-server.js && node --check src/ui/renderer.js && node --check src/ui/tauri-bridge.js && node --check scripts/mcp-server.mjs && node --check scripts/smoke.mjs && node --check test/visual-agent.test.js && cargo check --manifest-path src-tauri/Cargo.toml"
+    "check": "node --check src/main.js && node --check src/preload.cjs && node --check src/browser/navigation.js && node --check src/browser/space-manager.js && node --check src/browser/visual-agent.js && node --check src/agent-api/server.js && node --check src/agent-api/client.js && node --check src/ui/renderer.js && node --check src/ui/tauri-bridge.js && node --check scripts/smoke.mjs && node --check test/visual-agent.test.js && cargo check --manifest-path src-tauri/Cargo.toml"
   },
   "devDependencies": {
     "@tauri-apps/api": "^2.12.4",
@@ -26,8 +25,5 @@
     "electron": "^45.2.1",
     "electron-builder": "^26.18.0"
   },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.32.2",
-    "zod": "^4.6.7"
-  }
+  "dependencies": {}
 }

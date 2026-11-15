@@ -183,3 +183,148 @@ if (apiStatus && initialApiInfo) {
 }
 render();
 window.__openBrowserUiReady = true;
+
+// ── Configuración del agente (MCP + Skill) ────────────────────────────────────
+const settingsButton = document.querySelector('#settings');
+const settingsModal = document.querySelector('#settings-modal');
+const settingsTabs = document.querySelectorAll('.settings-tab');
+const settingsPanes = document.querySelectorAll('.settings-pane');
+const mcpConfigElement = document.querySelector('#mcp-config');
+const skillTextElement = document.querySelector('#skill-text');
+const apiHintElement = document.querySelector('#api-hint');
+const copyConfigButton = document.querySelector('#copy-config');
+const copySkillButton = document.querySelector('#copy-skill');
+
+let skillTextPromise = null;
+
+function buildMcpConfig(apiInfo) {
+  if (!apiInfo) {
+    mcpConfigElement.textContent = 'La API local no está disponible en este momento.';
+    if (apiHintElement) apiHintElement.textContent = '';
+    return null;
+  }
+  const config = {
+    mcpServers: {
+      'feather-open-browser': {
+        type: 'http',
+        url: `http://127.0.0.1:${apiInfo.port}/mcp`,
+        headers: { Authorization: `Bearer ${apiInfo.token}` }
+      }
+    }
+  };
+  const text = JSON.stringify(config, null, 2);
+  mcpConfigElement.textContent = text;
+  if (apiHintElement) apiHintElement.textContent = `http://127.0.0.1:${apiInfo.port}/mcp`;
+  return text;
+}
+
+function selectSettingsTab(name) {
+  for (const tab of settingsTabs) {
+    const active = tab.dataset.settingsTab === name;
+    tab.classList.toggle('active', active);
+    tab.setAttribute('aria-selected', String(active));
+  }
+  for (const pane of settingsPanes) {
+    pane.hidden = pane.dataset.settingsPane !== name;
+  }
+}
+
+function openSettings() {
+  if (!settingsModal) return;
+  settingsModal.hidden = false;
+  if (mcpConfigElement && !mcpConfigElement.textContent) {
+    buildMcpConfig(initialApiInfo);
+  }
+  if (skillTextElement && !skillTextElement.textContent) {
+    loadSkillText();
+  }
+  const closeButton = settingsModal.querySelector('.settings-close');
+  if (closeButton) closeButton.focus();
+}
+
+function loadSkillText() {
+  if (!skillTextElement || skillTextPromise) return;
+  skillTextPromise = window.browser.getSkillText();
+  skillTextPromise
+    .then((text) => {
+      skillTextElement.textContent = text;
+    })
+    .catch(() => {
+      skillTextElement.textContent = 'No se pudo cargar el texto de la skill.';
+      skillTextPromise = null;
+    });
+}
+
+function closeSettings() {
+  if (settingsModal) settingsModal.hidden = true;
+}
+
+async function copyText(button, text, originalLabel) {
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const helper = document.createElement('textarea');
+    helper.value = text;
+    helper.style.position = 'fixed';
+    helper.style.opacity = '0';
+    document.body.append(helper);
+    helper.select();
+    document.execCommand('copy');
+    helper.remove();
+  }
+  button.textContent = '¡Copiado!';
+  button.classList.add('copied');
+  setTimeout(() => {
+    button.textContent = originalLabel;
+    button.classList.remove('copied');
+  }, 1600);
+}
+
+if (settingsButton) {
+  settingsButton.addEventListener('click', openSettings);
+}
+for (const tab of settingsTabs) {
+  tab.addEventListener('click', () => selectSettingsTab(tab.dataset.settingsTab));
+}
+if (copyConfigButton) {
+  copyConfigButton.addEventListener('click', () => {
+    void copyText(copyConfigButton, mcpConfigElement?.textContent, 'Copiar JSON');
+  });
+}
+if (copySkillButton) {
+  copySkillButton.addEventListener('click', async () => {
+    if (!skillTextElement.textContent) {
+      loadSkillText();
+      await skillTextPromise;
+    }
+    void copyText(copySkillButton, skillTextElement.textContent, 'Copiar skill');
+  });
+}
+for (const element of settingsModal?.querySelectorAll('[data-settings-close]') || []) {
+  element.addEventListener('click', closeSettings);
+}
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && settingsModal && !settingsModal.hidden) closeSettings();
+});
+
+/* Controles de ventana (la ventana no tiene decoraciones nativas) */
+function currentWindow() {
+  const tauriWindow = window.__TAURI__?.window;
+  return tauriWindow?.getCurrentWindow?.() ?? tauriWindow?.getCurrent?.();
+}
+if (/Mac|iPod|iPhone|iPad/.test(navigator.platform)) {
+  document.body.classList.add('is-macos');
+}
+const winMinimize = document.querySelector('#win-minimize');
+const winMaximize = document.querySelector('#win-maximize');
+const winClose = document.querySelector('#win-close');
+if (winMinimize) {
+  winMinimize.addEventListener('click', () => { void currentWindow()?.minimize(); });
+}
+if (winMaximize) {
+  winMaximize.addEventListener('click', () => { void currentWindow()?.toggleMaximize(); });
+}
+if (winClose) {
+  winClose.addEventListener('click', () => { void currentWindow()?.close(); });
+}

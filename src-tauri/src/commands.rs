@@ -100,3 +100,8 @@ pub async fn close_space(
 pub async fn get_api_info(state: State<'_, Option<ApiInfo>>) -> Result<Option<ApiInfo>, String> {
   Ok(state.inner().clone())
 }
+
+#[tauri::command]
+pub fn get_skill_text() -> Result<String, String> {
+  Ok(crate::mcp::SKILL_MD.to_string())
+}

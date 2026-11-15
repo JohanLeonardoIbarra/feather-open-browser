@@ -18,6 +18,7 @@ if (!window.browser && window.__TAURI__) {
     activateSpace: (spaceId) => invoke('activate_space', { spaceId }),
     closeSpace: (spaceId) => invoke('close_space', { spaceId }),
     getApiInfo: () => invoke('get_api_info'),
+    getSkillText: () => invoke('get_skill_text'),
     onState: (callback) => {
       let unlistenFn = null;
       listen('browser:state', (event) => callback(event.payload)).then((unlisten) => {

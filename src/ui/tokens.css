@@ -10,22 +10,52 @@
   src: url("./assets/public-sans-latin-variable.woff2") format("woff2");
 }
 
+/*
+  Mundo visual: el icono de la marca.
+  Squircle negro con gradiente, trazo blanco fino a opacidades variables,
+  glow blanco en los estados activos. El coral queda reservado para
+  "agente ejecutando"; todo lo demás es negro y blanco.
+*/
 :root {
-  --foreground: #173648;
-  --route-ink: #12384b;
-  --route-ink-raised: #1e4a5b;
-  --button-ink: #17495a;
-  --route-ground: #e8efec;
-  --route-ground-raised: #f7f9f6;
-  --route-band: #e5eeea;
-  --tab-rail: #dce6e3;
-  --route-line: #c4d3ce;
-  --route-muted: #4f686c;
-  --personal-marker: #a7c9d0;
-  --route-teal: #2e9f91;
-  --route-coral: #ef654d;
-  --route-amber: #e5b249;
-  --field-white: #ffffff;
-  --inverse-light: #f2f6f3;
-  --route-overlay: #0d283577;
+  /* Profundidad (gradiente del icono, 135°) */
+  --ground: #08090c;
+  --ground-deep: #060709;
+  --ground-black: #000000;
+  --ground-raised: #101318;
+  --ground-icon: linear-gradient(135deg, #111318 0%, #060709 55%, #000000 100%);
+
+  /* Hairlines blancas del icono: borde exterior .26, interior .08 */
+  --line-strong: rgba(255, 255, 255, 0.26);
+  --line: rgba(255, 255, 255, 0.14);
+  --line-soft: rgba(255, 255, 255, 0.08);
+  --line-hover: rgba(255, 255, 255, 0.4);
+
+  /* Tinta de la pluma */
+  --text-hi: #f8fafc;
+  --text: rgba(255, 255, 255, 0.78);
+  --text-lo: rgba(255, 255, 255, 0.55);
+
+  /* Glow blanco (estados activos) */
+  --glow: 0 0 10px rgba(255, 255, 255, 0.45);
+  --glow-soft: 0 0 8px rgba(255, 255, 255, 0.3);
+
+  /* Estados funcionales */
+  --state-working: #f87171;
+  --state-working-glow: 0 0 8px rgba(248, 113, 113, 0.55);
+
+  /* Superficies */
+  --overlay: rgba(0, 0, 0, 0.6);
+  --veil: rgba(255, 255, 255, 0.06);
+  --veil-hover: rgba(255, 255, 255, 0.1);
+
+  /* Radio (eco del squircle: 106/512 ≈ 21%) */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-squircle: 28px;
+
+  /* Opacidades de meridiano (0.86 / 0.64 / 0.56 del icono) */
+  --meridian-1: 0.86;
+  --meridian-2: 0.64;
+  --meridian-3: 0.56;
 }

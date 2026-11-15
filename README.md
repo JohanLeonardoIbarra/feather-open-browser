@@ -5,7 +5,7 @@
   <p>
     <a href="https://github.com/JohanLeonardoIbarra/feather-open-browser/releases/latest">Descargar</a>
     ·
-    <a href="https://github.com/JohanLeonardoIbarra/feather-open-browser-mcp">Conectar un agente</a>
+    <a href="#cómo-empezar">Conectar un agente</a>
     ·
     <a href="CONTRIBUTING.md">Contribuir</a>
   </p>
@@ -48,11 +48,11 @@ Feather Open Browser ofrece a los agentes un navegador dedicado, mientras mantie
 ## Cómo empezar
 
 1. Descarga e instala Feather Open Browser para tu sistema operativo.
-2. Instala y configura el [MCP independiente](https://github.com/JohanLeonardoIbarra/feather-open-browser-mcp) en el agente que quieras usar.
-3. Abre Feather Open Browser en el mismo ordenador que el agente y reinicia o recarga el agente.
+2. Abre Feather Open Browser y pulsa la **tuerca ⚙️ de la barra superior**: ahí tienes la configuración MCP (JSON con la URL y el token de la app en marcha) y el texto de la Skill, listos para copiar.
+3. Pega el JSON en la configuración de servidores MCP de tu agente y, si quieres, añade la Skill como `SKILL.md`.
 4. Prueba con una petición como: *«Abre example.com en Feather Open Browser y resume lo que aparece»*.
 
-El repositorio del MCP incluye instrucciones de configuración y una Skill opcional para el agente.
+El MCP está integrado en la propia aplicación: se sirve por HTTP local en `http://127.0.0.1:<puerto>/mcp` y se autentica con el token Bearer que muestra la tuerca. El token cambia en cada arranque de la app, por lo que hay que regenerar la configuración si lo copiaste antes.
 
 ## Privacidad y uso seguro
 
